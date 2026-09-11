@@ -221,42 +221,62 @@ io.on('connection', (socket) => {
   });
 
   // ---- HOST: yêu cầu xem bảng xếp hạng (sau màn reveal) ----
-  socket.on('request-leaderboard', ({ pin }) => {
+ // ---- HOST: yêu cầu bảng xếp hạng ----
+// Chỉ cho phép hiển thị bảng xếp hạng ở câu cuối
+socket.on('request-leaderboard', ({ pin }) => {
+
   const game = games[pin];
+
   if (!game || game.hostId !== socket.id) return;
 
-  // Sắp xếp điểm cao → thấp
-  const leaderboard = getPlayerList(game)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 10);
-
   const isLast =
-    game.currentQuestionIndex + 1 >= game.quizData.questions.length;
+    game.currentQuestionIndex + 1 >=
+    game.quizData.questions.length;
 
-  // Lấy Top 3 cho màn hình Podium
-  const podium = leaderboard.slice(0, 3);
+  // Không cho xem leaderboard giữa game
+  if (!isLast) return;
 
-  io.to(game.hostId).emit('show-leaderboard', {
+  const leaderboard =
+    getPlayerList(game)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+
+  // GỬI CHO HOST + TẤT CẢ PLAYER
+  io.to(pin).emit('show-leaderboard', {
+
     leaderboard,
-    podium,
 
-    afterQuestionNumber: game.currentQuestionIndex + 1,
-    totalQuestions: game.quizData.questions.length,
+    afterQuestionNumber:
+      game.currentQuestionIndex + 1,
 
-    isLast,
+    totalQuestions:
+      game.quizData.questions.length,
 
-    // Dùng để host biết đây là bảng xếp hạng cuối cùng
-    isFinalLeaderboard: isLast
+    isLast: true
   });
 });
 
   // ---- HOST: chuyển sang câu hỏi kế tiếp ----
-  socket.on('next-question', ({ pin }) => {
-    const game = games[pin];
-    if (!game || game.hostId !== socket.id) return;
-    game.currentQuestionIndex++;
-    askQuestion(pin);
-  });
+ socket.on('next-question', ({ pin }) => {
+
+  const game = games[pin];
+
+  if (!game || game.hostId !== socket.id) return;
+
+  // Nếu đang ở câu cuối thì kết thúc game
+  if (
+    game.currentQuestionIndex + 1 >=
+    game.quizData.questions.length
+  ) {
+    io.to(pin).emit('game-over');
+    endGame(pin);
+    return;
+  }
+
+  game.currentQuestionIndex++;
+
+  askQuestion(pin);
+});
 
   // ---- PLAYER: gửi câu trả lời ----
   socket.on('submit-answer', ({ pin, answerIndex }) => {
