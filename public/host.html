@@ -657,7 +657,19 @@
     <div class="reveal-stage hidden" id="revealView">
       <p class="reveal-q" id="revealQText">...</p>
       <div id="revealBars"></div>
-      <button class="lb-continue-btn" onclick="requestLeaderboard()">Xem bảng xếp hạng →</button>
+      <button
+  class="lb-continue-btn hidden"
+  id="leaderboardBtn"
+  onclick="requestLeaderboard()">
+  🏆 Xem bảng xếp hạng cuối cùng
+</button>
+
+<button
+  class="lb-continue-btn"
+  id="continueQuestionBtn"
+  onclick="nextQuestion()">
+  Câu tiếp theo →
+</button>
     </div>
 
     <!-- LEADERBOARD VIEW -->
@@ -796,28 +808,115 @@
     el('answeredCount').innerHTML = `<b>${answered}</b> / ${total} đã trả lời`;
   });
 
-  socket.on('show-reveal', ({ questionText, options, correctIndex }) => {
-    el('questionView').classList.add('hidden');
-    el('revealView').classList.remove('hidden');
+  socket.on(
+  'show-reveal',
+  ({
+    questionText,
+    options,
+    correctIndex
+  }) => {
 
-    el('revealQText').textContent = questionText;
-    const maxCount = Math.max(1, ...options.map(o => o.count));
+    el('questionView')
+      .classList.add('hidden');
 
-    el('revealBars').innerHTML = options.map((o, i) => {
-      const isCorrect = i === correctIndex;
-      const widthPct = Math.max(8, Math.round((o.count / maxCount) * 100));
-      return `
-        <div class="reveal-bar-row">
-          <div class="reveal-bar-label">
-            <span>${escapeHtml(o.text)}</span>
-            ${isCorrect ? '<span class="correct-tag">✓ Đáp án đúng</span>' : ''}
+    el('revealView')
+      .classList.remove('hidden');
+
+    el('revealQText')
+      .textContent = questionText;
+
+    const maxCount =
+      Math.max(
+        1,
+        ...options.map(o => o.count)
+      );
+
+    el('revealBars').innerHTML =
+      options.map((o, i) => {
+
+        const isCorrect =
+          i === correctIndex;
+
+        const widthPct =
+          Math.max(
+            8,
+            Math.round(
+              (o.count / maxCount) * 100
+            )
+          );
+
+        return `
+          <div class="reveal-bar-row">
+
+            <div class="reveal-bar-label">
+
+              <span>
+                ${escapeHtml(o.text)}
+              </span>
+
+              ${
+                isCorrect
+                  ? '<span class="correct-tag">✓ Đáp án đúng</span>'
+                  : ''
+              }
+
+            </div>
+
+            <div class="reveal-track">
+
+              <div
+                class="reveal-fill ${
+                  isCorrect ? 'correct' : ''
+                }"
+                style="width:${widthPct}%">
+
+                ${o.count}
+
+              </div>
+
+            </div>
+
           </div>
-          <div class="reveal-track">
-            <div class="reveal-fill ${isCorrect ? 'correct' : ''}" style="width:${widthPct}%">${o.count}</div>
-          </div>
-        </div>`;
-    }).join('');
-  });
+        `;
+
+      }).join('');
+
+    // --------------------------------
+    // Xác định câu cuối
+    // --------------------------------
+
+    const currentQuestion =
+      window.currentQuestionNumber || 1;
+
+    const totalQuestions =
+      window.totalQuestionCount || 1;
+
+    const isLast =
+      currentQuestion >= totalQuestions;
+
+    const lbBtn =
+      el('leaderboardBtn');
+
+    const nextBtn =
+      el('continueQuestionBtn');
+
+    if (isLast) {
+
+      // Câu cuối → chỉ hiện leaderboard
+      lbBtn.classList.remove('hidden');
+
+      nextBtn.classList.add('hidden');
+
+    } else {
+
+      // Câu thường → chỉ hiện Next
+      lbBtn.classList.add('hidden');
+
+      nextBtn.classList.remove('hidden');
+
+    }
+  }
+);
 
   socket.on(
   'show-leaderboard',
