@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Kahoot Clone - Man hinh Host</title>
+  <script src="https://socket.io"></script>
+</head>
+<body>
+  <div id="lobby">
+    <h1 id="titleDisplay">Dang tai...</h1>
+    <button id="createBtn">Tao Phong Choi</button>
+    <h2>Ma PIN Tham Gia: <span id="pinDisplay" style="color:red; font-size:32px;"></span></h2>
+    <h3>Danh sach nguoi choi:</h3>
+    <ul id="playerList"></ul>
+    <button id="startBtn" style="display:none;">Bat Dau Cau Hoi</button>
+  </div>
+
+  <div id="gameZone" style="display:none; margin-top:20px;">
+    <h1 id="questionText">Cau hoi hien thi o day</h1>
+    <h2>⏱️ <span id="timer">15</span> giay</h2>
+    <div id="optionsList" style="font-size:20px;"></div>
+  </div>
+
+  <div id="leaderboardZone" style="display:none; margin-top:30px; background:#222; color:#fff; padding:20px;">
+    <h2>🏆 BANG XEP HANG TOP 5 🏆</h2>
+    <ol id="leaderboardList"></ol>
+    <button id="nextBtn" onclick="nextQuestion()">Cau hoi tiep theo</button>
+  </div>
+
+  <script>
+    const socket = io();
+    let currentPin = '';
+
+    document.getElementById('createBtn').addEventListener('click', () => {
+      socket.emit('create-game');
+    });
+
+    socket.on('game-created', ({ pin, quizTitle }) => {
+      currentPin = pin;
+      document.getElementById('createBtn').style.display = 'none';
+      document.getElementById('startBtn').style.display = 'block';
+      document.getElementById('titleDisplay').innerText = "Quiz: " + quizTitle;
+      document.getElementById('pinDisplay').innerText = pin;
+    });
+
+    socket.on('player-joined', (nick) => {
+      const li = document.createElement('li');
+      li.innerText = nick;
+      document.getElementById('playerList').appendChild(li);
+    });
+
+    document.getElementById('startBtn').addEventListener('click', () => {
+      document.getElementById('lobby').style.display = 'none';
+      document.getElementById('gameZone').style.display = 'block';
+      socket.emit('start-question', { pin: currentPin });
+    });
+
+    socket.on('render-question-host', ({ questionText, options }) => {
+      document.getElementById('questionText').innerText = questionText;
+      const optDiv = document.getElementById('optionsList');
+      optDiv.innerHTML = '';
+      options.forEach((opt, index) => {
+        optDiv.innerHTML += `<p><strong>Dap an ${index + 1}:</strong> ${opt}</p>`;
+      });
+    });
+
+    socket.on('timer-update', (timeLeft) => {
+      document.getElementById('timer').innerText = timeLeft;
+    });
+
+    socket.on('show-leaderboard', (top5) => {
+      document.getElementById('gameZone').style.display = 'none';
+      document.getElementById('leaderboardZone').style.display = 'block';
+      const list = document.getElementById('leaderboardList');
+      list.innerHTML = '';
+      top5.forEach(p => {
+        list.innerHTML += `<li><strong>${p.nickname}</strong>: ${p.score} diem</li>`;
+      });
+    });
+
+    function nextQuestion() {
+      document.getElementById('leaderboardZone').style.display = 'none';
+      document.getElementById('gameZone').style.display = 'block';
+      socket.emit('start-question', { pin: currentPin });
+    }
+
+    socket.on('game-over', () => {
+      alert("Tro choi ket thuc!");
+      location.reload();
+    });
+  </script>
+</body>
+</html>
