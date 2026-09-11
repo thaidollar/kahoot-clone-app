@@ -171,12 +171,14 @@ io.on('connection', (socket) => {
   });
 
   // ---- PLAYER: tham gia phòng ----
-  socket.on('join-game', ({ pin, nickname }) => {
+  socket.on('join-game', ({ pin, nickname, employeeId }) => {
     const cleanNick = (nickname || '').trim().slice(0, 20);
+    const cleanEmpId = (employeeId || '').trim().slice(0, 20);
     const game = games[pin];
 
     if (!game) return socket.emit('join-error', 'Không tìm thấy phòng!');
     if (!cleanNick) return socket.emit('join-error', 'Vui lòng nhập tên!');
+    if (!cleanEmpId) return socket.emit('join-error', 'Vui lòng nhập mã số nhân viên (MSNV)!');
     if (game.currentQuestionIndex > 0 || game.timerInterval) {
       return socket.emit('join-error', 'Trò chơi đã bắt đầu!');
     }
@@ -186,7 +188,12 @@ io.on('connection', (socket) => {
     );
     if (nameTaken) return socket.emit('join-error', 'Tên này đã có người dùng, chọn tên khác!');
 
-    game.players[socket.id] = { nickname: cleanNick, score: 0, pin };
+    const empIdTaken = Object.values(game.players).some(
+      p => p.employeeId.toLowerCase() === cleanEmpId.toLowerCase()
+    );
+    if (empIdTaken) return socket.emit('join-error', 'MSNV này đã tham gia phòng rồi!');
+
+    game.players[socket.id] = { nickname: cleanNick, employeeId: cleanEmpId, score: 0, pin };
     socket.join(pin);
     socket.emit('joined-successfully', { nickname: cleanNick });
 
