@@ -133,14 +133,25 @@ function revealAnswer(pin) {
     if (counts[answerIndex] !== undefined) counts[answerIndex]++;
   }
   const correctIndex = q.options.findIndex(o => o.isCorrect);
+io.to(game.hostId).emit('show-reveal', {
+  questionText: q.questionText,
 
-  io.to(game.hostId).emit('show-reveal', {
-    questionText: q.questionText,
-    options: q.options.map((o, i) => ({ text: o.text, count: counts[i] })),
-    correctIndex,
-    questionNumber: game.currentQuestionIndex + 1,
-    totalQuestions: game.quizData.questions.length
-  });
+  options: q.options.map((o, i) => ({
+    text: o.text,
+    count: counts[i]
+  })),
+
+  correctIndex,
+
+  questionNumber: game.currentQuestionIndex + 1,
+
+  totalQuestions: game.quizData.questions.length,
+
+  // Quan trọng
+  isLast:
+    game.currentQuestionIndex + 1 >=
+    game.quizData.questions.length
+});
 
   io.to(pin).emit('question-ended');
 }
@@ -233,17 +244,15 @@ socket.on('request-leaderboard', ({ pin }) => {
     game.currentQuestionIndex + 1 >=
     game.quizData.questions.length;
 
-  // Không cho xem leaderboard giữa game
+  // Chỉ cho leaderboard ở câu cuối
   if (!isLast) return;
 
-  const leaderboard =
-    getPlayerList(game)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 10);
+  const leaderboard = getPlayerList(game)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10);
 
-  // GỬI CHO HOST + TẤT CẢ PLAYER
+  // Gửi cho HOST + PLAYER
   io.to(pin).emit('show-leaderboard', {
-
     leaderboard,
 
     afterQuestionNumber:
@@ -255,7 +264,6 @@ socket.on('request-leaderboard', ({ pin }) => {
     isLast: true
   });
 });
-
   // ---- HOST: chuyển sang câu hỏi kế tiếp ----
  socket.on('next-question', ({ pin }) => {
 
