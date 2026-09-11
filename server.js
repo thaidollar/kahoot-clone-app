@@ -24,8 +24,26 @@ app.get('/play', (req, res) => res.sendFile(path.join(__dirname, 'public', 'play
 const mockQuiz = {
   title: "Đố Vui Công Nghệ 2026",
   questions: [
-    { questionText: "HTML là viết tắt của từ gì?", options: [{ text: "HyperText Markup Language", isCorrect: true }, { text: "HighText Machine Language", isCorrect: false }], timeLimit: 15 },
-    { questionText: "Node.js chạy trên Engine JavaScript nào?", options: [{ text: "SpiderMonkey", isCorrect: false }, { text: "V8", isCorrect: true }], timeLimit: 15 }
+    {
+      questionText: "HTML là viết tắt của từ gì?",
+      options: [
+        { text: "HyperText Markup Language", isCorrect: true },
+        { text: "HighText Machine Language", isCorrect: false },
+        { text: "Hyperlink Text Marking Language", isCorrect: false },
+        { text: "Home Tool Markup Language", isCorrect: false }
+      ],
+      timeLimit: 15
+    },
+    {
+      questionText: "Node.js chạy trên Engine JavaScript nào?",
+      options: [
+        { text: "SpiderMonkey", isCorrect: false },
+        { text: "V8", isCorrect: true },
+        { text: "Chakra", isCorrect: false },
+        { text: "JavaScriptCore", isCorrect: false }
+      ],
+      timeLimit: 15
+    }
   ]
 };
 
@@ -52,6 +70,75 @@ function endGame(pin) {
   delete games[pin];
 }
 
+// Gửi câu hỏi hiện tại (dùng cho cả "Start" lần đầu lẫn "Next Question")
+function askQuestion(pin) {
+  const game = games[pin];
+  if (!game) return;
+
+  const currentQuestion = game.quizData.questions[game.currentQuestionIndex];
+  if (!currentQuestion) {
+    io.to(pin).emit('game-over');
+    return endGame(pin);
+  }
+
+  game.questionStartTime = Date.now();
+  game.answers = new Map(); // socketId -> answerIndex, reset mỗi câu
+
+  const totalPlayers = Object.keys(game.players).length;
+
+  io.to(game.hostId).emit('render-question-host', {
+    questionText: currentQuestion.questionText,
+    options: currentQuestion.options.map(o => o.text),
+    questionNumber: game.currentQuestionIndex + 1,
+    totalQuestions: game.quizData.questions.length,
+    totalPlayers
+  });
+  io.to(pin).emit('show-controller', { optionCount: currentQuestion.options.length });
+
+  let timeLeft = currentQuestion.timeLimit;
+  if (game.timerInterval) clearInterval(game.timerInterval);
+
+  game.timerInterval = setInterval(() => {
+    timeLeft--;
+    io.to(pin).emit('timer-update', timeLeft);
+    if (timeLeft <= 0) {
+      clearInterval(game.timerInterval);
+      game.timerInterval = null;
+      revealAnswer(pin);
+    }
+  }, 1000);
+}
+
+// Hết giờ hoặc host bấm Skip -> tiết lộ đáp án + số lượt chọn từng phương án
+function revealAnswer(pin) {
+  const game = games[pin];
+  if (!game) return;
+
+  if (game.timerInterval) {
+    clearInterval(game.timerInterval);
+    game.timerInterval = null;
+  }
+
+  const q = game.quizData.questions[game.currentQuestionIndex];
+  if (!q) return;
+
+  const counts = q.options.map(() => 0);
+  for (const answerIndex of game.answers.values()) {
+    if (counts[answerIndex] !== undefined) counts[answerIndex]++;
+  }
+  const correctIndex = q.options.findIndex(o => o.isCorrect);
+
+  io.to(game.hostId).emit('show-reveal', {
+    questionText: q.questionText,
+    options: q.options.map((o, i) => ({ text: o.text, count: counts[i] })),
+    correctIndex,
+    questionNumber: game.currentQuestionIndex + 1,
+    totalQuestions: game.quizData.questions.length
+  });
+
+  io.to(pin).emit('question-ended');
+}
+
 io.on('connection', (socket) => {
 
   // ---- HOST: tạo phòng ----
@@ -59,7 +146,7 @@ io.on('connection', (socket) => {
     let pin;
     do {
       pin = Math.floor(100000 + Math.random() * 900000).toString();
-    } while (games[pin]); // tránh trùng PIN
+    } while (games[pin]);
 
     games[pin] = {
       hostId: socket.id,
@@ -67,7 +154,7 @@ io.on('connection', (socket) => {
       currentQuestionIndex: 0,
       players: {},
       questionStartTime: 0,
-      answeredThisQuestion: new Set(),
+      answers: new Map(),
       timerInterval: null
     };
     socket.join(pin);
@@ -80,12 +167,7 @@ io.on('connection', (socket) => {
       console.error('Lỗi tạo QR code:', err);
     }
 
-    socket.emit('game-created', {
-      pin,
-      quizTitle: mockQuiz.title,
-      joinUrl,
-      qrCodeDataUrl
-    });
+    socket.emit('game-created', { pin, quizTitle: mockQuiz.title, joinUrl, qrCodeDataUrl });
   });
 
   // ---- PLAYER: tham gia phòng ----
@@ -95,7 +177,9 @@ io.on('connection', (socket) => {
 
     if (!game) return socket.emit('join-error', 'Không tìm thấy phòng!');
     if (!cleanNick) return socket.emit('join-error', 'Vui lòng nhập tên!');
-    if (game.currentQuestionIndex > 0) return socket.emit('join-error', 'Trò chơi đã bắt đầu!');
+    if (game.currentQuestionIndex > 0 || game.timerInterval) {
+      return socket.emit('join-error', 'Trò chơi đã bắt đầu!');
+    }
 
     const nameTaken = Object.values(game.players).some(
       p => p.nickname.toLowerCase() === cleanNick.toLowerCase()
@@ -109,55 +193,54 @@ io.on('connection', (socket) => {
     broadcastPlayerList(pin);
   });
 
-  // ---- HOST: bắt đầu câu hỏi tiếp theo ----
+  // ---- HOST: bắt đầu câu hỏi đầu tiên ----
   socket.on('start-question', ({ pin }) => {
     const game = games[pin];
     if (!game || game.hostId !== socket.id) return;
+    askQuestion(pin);
+  });
 
-    const currentQuestion = game.quizData.questions[game.currentQuestionIndex];
-    if (!currentQuestion) {
-      io.to(pin).emit('game-over');
-      return endGame(pin);
-    }
+  // ---- HOST: bỏ qua thời gian còn lại, tiết lộ đáp án ngay ----
+  socket.on('skip-question', ({ pin }) => {
+    const game = games[pin];
+    if (!game || game.hostId !== socket.id) return;
+    revealAnswer(pin);
+  });
 
-    game.questionStartTime = Date.now();
-    game.answeredThisQuestion = new Set();
+  // ---- HOST: yêu cầu xem bảng xếp hạng (sau màn reveal) ----
+  socket.on('request-leaderboard', ({ pin }) => {
+    const game = games[pin];
+    if (!game || game.hostId !== socket.id) return;
 
-    io.to(game.hostId).emit('render-question-host', {
-      questionText: currentQuestion.questionText,
-      options: currentQuestion.options.map(o => o.text),
-      questionNumber: game.currentQuestionIndex + 1,
-      totalQuestions: game.quizData.questions.length
+    const leaderboard = getPlayerList(game).sort((a, b) => b.score - a.score).slice(0, 10);
+    const isLast = game.currentQuestionIndex + 1 >= game.quizData.questions.length;
+
+    io.to(game.hostId).emit('show-leaderboard', {
+      leaderboard,
+      afterQuestionNumber: game.currentQuestionIndex + 1,
+      totalQuestions: game.quizData.questions.length,
+      isLast
     });
-    io.to(pin).emit('show-controller', { optionCount: currentQuestion.options.length });
+  });
 
-    let timeLeft = currentQuestion.timeLimit;
-    if (game.timerInterval) clearInterval(game.timerInterval);
-
-    game.timerInterval = setInterval(() => {
-      timeLeft--;
-      io.to(pin).emit('timer-update', timeLeft);
-      if (timeLeft <= 0) {
-        clearInterval(game.timerInterval);
-        const leaderboard = getPlayerList(game).sort((a, b) => b.score - a.score);
-        io.to(pin).emit('question-ended');
-        io.to(game.hostId).emit('show-leaderboard', leaderboard.slice(0, 5));
-        game.currentQuestionIndex++;
-      }
-    }, 1000);
+  // ---- HOST: chuyển sang câu hỏi kế tiếp ----
+  socket.on('next-question', ({ pin }) => {
+    const game = games[pin];
+    if (!game || game.hostId !== socket.id) return;
+    game.currentQuestionIndex++;
+    askQuestion(pin);
   });
 
   // ---- PLAYER: gửi câu trả lời ----
   socket.on('submit-answer', ({ pin, answerIndex }) => {
     const game = games[pin];
     if (!game || !game.players[socket.id]) return;
-
-    // Chặn trả lời nhiều lần cho cùng 1 câu
-    if (game.answeredThisQuestion.has(socket.id)) return;
-    game.answeredThisQuestion.add(socket.id);
+    if (game.answers.has(socket.id)) return; // đã trả lời rồi, chặn gửi lại
 
     const currentQuestion = game.quizData.questions[game.currentQuestionIndex];
     if (!currentQuestion) return;
+
+    game.answers.set(socket.id, answerIndex);
 
     const timeTaken = Date.now() - game.questionStartTime;
     const isCorrect = currentQuestion.options[answerIndex]?.isCorrect;
@@ -169,6 +252,11 @@ io.on('connection', (socket) => {
     } else {
       socket.emit('answer-result', { correct: false, points: 0 });
     }
+
+    io.to(game.hostId).emit('answer-count-update', {
+      answered: game.answers.size,
+      total: Object.keys(game.players).length
+    });
   });
 
   // ---- Xử lý khi có người ngắt kết nối ----
@@ -177,7 +265,6 @@ io.on('connection', (socket) => {
       const game = games[pin];
 
       if (game.hostId === socket.id) {
-        // Host thoát -> kết thúc phòng, báo cho người chơi
         io.to(pin).emit('host-disconnected');
         endGame(pin);
         continue;
@@ -185,7 +272,7 @@ io.on('connection', (socket) => {
 
       if (game.players[socket.id]) {
         delete game.players[socket.id];
-        game.answeredThisQuestion.delete(socket.id);
+        game.answers.delete(socket.id);
         broadcastPlayerList(pin);
       }
     }
