@@ -1,95 +1,330 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <title>Kahoot Clone - Man hinh Host</title>
-  <!-- 1. BẮT BUỘC PHẢI TẢI THƯ VIỆN NÀY TRƯỚC -->
-  <script src="/socket.io/socket.io.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hosting — Đố Vui</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #EEF0FB;
+    --stripe: #E5E8FA;
+    --card: #FFFFFF;
+    --primary: #4B57E8;
+    --primary-dark: #3944C9;
+    --primary-disabled: #B7BDF2;
+    --navy: #1B2350;
+    --muted: #8D93B8;
+    --border: #E7E9F6;
+    --good: #2FB380;
+  }
+  *{ box-sizing: border-box; }
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:
+      repeating-linear-gradient(135deg, var(--stripe) 0 2px, transparent 2px 34px),
+      var(--bg);
+    font-family: 'Inter', sans-serif;
+    color: var(--navy);
+  }
+
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 22px 40px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(6px);
+  }
+  .topbar-left{ display:flex; align-items:center; gap:18px; }
+  .close-btn{
+    width:34px; height:34px; border-radius:50%;
+    border:none; background:transparent; color:var(--muted);
+    font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition: background .15s, color .15s;
+  }
+  .close-btn:hover{ background:#E9EBFB; color:var(--navy); }
+  .hosting-label{
+    font-size: 13px; color: var(--muted); font-weight:600; margin:0 0 2px 0;
+  }
+  .quiz-title{
+    font-family:'Baloo 2', sans-serif;
+    font-size: 24px; font-weight:700; margin:0; color:var(--navy);
+  }
+  .start-btn{
+    font-family:'Baloo 2', sans-serif;
+    background: var(--primary);
+    color:#fff; border:none; border-radius: 14px;
+    font-size:18px; font-weight:700;
+    padding: 14px 30px; cursor:pointer;
+    box-shadow: 0 6px 0 var(--primary-dark);
+    transition: transform .08s ease;
+  }
+  .start-btn:active{ transform: translateY(4px); box-shadow: 0 2px 0 var(--primary-dark); }
+  .start-btn:disabled{
+    background: var(--primary-disabled); box-shadow:none; cursor:not-allowed;
+  }
+
+  .stage{ padding: 40px; }
+  .panels{
+    display:grid; grid-template-columns: 5fr 6fr; gap: 26px;
+    max-width: 1300px; margin: 0 auto;
+  }
+  @media (max-width: 860px){
+    .panels{ grid-template-columns: 1fr; }
+  }
+
+  .card{
+    background: var(--card); border-radius: 22px;
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 30px rgba(43, 52, 130, 0.06);
+    padding: 40px 32px;
+  }
+
+  .join-card{ text-align:center; }
+  .join-instr{ font-size:15px; color: var(--muted); margin:0 0 18px 0; }
+  .join-instr b{ color: var(--navy); font-weight:700; }
+
+  .pin{
+    font-family:'Baloo 2', sans-serif;
+    font-size: 64px; font-weight:800; letter-spacing: 10px;
+    color: var(--navy); cursor:pointer; user-select:none;
+    margin: 6px 0 4px 0; line-height:1;
+  }
+  .pin:hover{ color: var(--primary); }
+  .copy-hint{ font-size:13px; color: var(--muted); margin:0 0 26px 0; min-height:16px; }
+  .copy-hint.copied{ color: var(--good); font-weight:600; }
+
+  .qr-wrap img{ width: 220px; height:220px; border-radius: 12px; }
+  .qr-fallback{
+    width:220px; height:220px; margin:0 auto; border-radius:12px;
+    background: var(--stripe); display:flex; align-items:center; justify-content:center;
+    color:var(--muted); font-size:13px;
+  }
+  .scan-hint{ font-size:14px; color: var(--muted); margin-top:22px; }
+
+  .players-card h2{
+    font-family:'Baloo 2', sans-serif;
+    font-size:20px; margin:0 0 18px 0; font-weight:700;
+  }
+  .waiting{ color: var(--muted); font-size:15px; }
+
+  .player-grid{
+    display:flex; flex-wrap:wrap; gap:10px;
+  }
+  .player-chip{
+    background: #F1F2FC; border: 1px solid var(--border);
+    color: var(--navy); font-weight:600; font-size:14px;
+    padding: 10px 16px; border-radius: 999px;
+    animation: pop .25s ease;
+  }
+  @keyframes pop{ from{ transform: scale(.85); opacity:0; } to{ transform:scale(1); opacity:1; } }
+
+  /* ---- In-question view ---- */
+  .hidden{ display:none !important; }
+  .question-stage{ max-width: 1100px; margin: 0 auto; text-align:center; }
+  .q-meta{ color:var(--muted); font-weight:600; font-size:14px; margin-bottom:10px; }
+  .q-text{
+    font-family:'Baloo 2', sans-serif; font-size: 32px; font-weight:700;
+    margin: 0 0 30px 0; color: var(--navy);
+  }
+  .timer{
+    font-family:'Baloo 2', sans-serif; font-size:22px; font-weight:800;
+    width:56px; height:56px; border-radius:50%; background:var(--primary); color:#fff;
+    display:flex; align-items:center; justify-content:center; margin: 0 auto 30px auto;
+  }
+  .options-grid{
+    display:grid; grid-template-columns: 1fr 1fr; gap:16px;
+  }
+  .option-card{
+    background:var(--card); border:1px solid var(--border); border-radius:16px;
+    padding: 22px; font-size:18px; font-weight:600; text-align:left;
+  }
+
+  /* ---- Leaderboard ---- */
+  .leaderboard-stage{ max-width: 640px; margin: 0 auto; }
+  .leaderboard-stage h2{ font-family:'Baloo 2', sans-serif; text-align:center; margin-bottom:24px; }
+  .lb-row{
+    display:flex; align-items:center; justify-content:space-between;
+    background: var(--card); border:1px solid var(--border); border-radius:14px;
+    padding: 14px 20px; margin-bottom:10px; font-weight:600;
+  }
+  .lb-rank{ color: var(--muted); width:28px; }
+  .lb-score{ color: var(--primary); font-weight:800; }
+
+  .next-btn{
+    display:block; margin: 26px auto 0 auto;
+    font-family:'Baloo 2', sans-serif; background:var(--primary); color:#fff;
+    border:none; border-radius:14px; font-size:16px; font-weight:700;
+    padding:14px 28px; cursor:pointer; box-shadow: 0 6px 0 var(--primary-dark);
+  }
+</style>
 </head>
 <body>
-  <div id="lobby">
-    <h1 id="titleDisplay">Hệ thống sẵn sàng</h1>
-    <button id="createBtn">Tao Phong Choi</button>
-    <h2>Ma PIN Tham Gia: <span id="pinDisplay" style="color:red; font-size:32px;"></span></h2>
-    <h3>Danh sach nguoi choi:</h3>
-    <ul id="playerList"></ul>
-    <button id="startBtn" style="display:none;">Bat Dau Cau Hoi</button>
+
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="close-btn" onclick="confirmClose()">✕</button>
+      <div>
+        <p class="hosting-label">Hosting</p>
+        <h1 class="quiz-title" id="quizTitle">Untitled Quiz</h1>
+      </div>
+    </div>
+    <button class="start-btn" id="startBtn" disabled onclick="startQuestion()">Start (0)</button>
   </div>
 
-  <div id="gameZone" style="display:none; margin-top:20px;">
-    <h1 id="questionText">Cau hoi hien thi o day</h1>
-    <h2>⏱️ <span id="timer">15</span> giay</h2>
-    <div id="optionsList" style="font-size:20px;"></div>
+  <div class="stage">
+
+    <!-- LOBBY VIEW -->
+    <div class="panels" id="lobbyView">
+      <div class="card join-card">
+        <p class="join-instr">Go to <b id="joinDomain">...</b> and enter</p>
+        <div class="pin" id="pin" onclick="copyJoinLink()">------</div>
+        <p class="copy-hint" id="copyHint">Click the code to copy the join link</p>
+        <div class="qr-wrap" id="qrWrap">
+          <div class="qr-fallback">Đang tạo mã QR…</div>
+        </div>
+        <p class="scan-hint">...or scan to join.</p>
+      </div>
+
+      <div class="card players-card">
+        <h2 id="playersHeading">Players (0)</h2>
+        <p class="waiting" id="waitingText">Waiting for players...</p>
+        <div class="player-grid" id="playerGrid"></div>
+      </div>
+    </div>
+
+    <!-- QUESTION VIEW -->
+    <div class="question-stage hidden" id="questionView">
+      <div class="timer" id="timerDisplay">15</div>
+      <p class="q-meta" id="qMeta">Câu 1 / 2</p>
+      <h2 class="q-text" id="qText">...</h2>
+      <div class="options-grid" id="optionsGrid"></div>
+    </div>
+
+    <!-- LEADERBOARD VIEW -->
+    <div class="leaderboard-stage hidden" id="leaderboardView">
+      <h2>Bảng xếp hạng</h2>
+      <div id="lbList"></div>
+      <button class="next-btn" onclick="startQuestion()">Câu tiếp theo</button>
+    </div>
+
   </div>
 
-  <div id="leaderboardZone" style="display:none; margin-top:30px; background:#222; color:#fff; padding:20px;">
-    <h2>🏆 BANG XEP HANG TOP 5 🏆</h2>
-    <ol id="leaderboardList"></ol>
-    <button id="nextBtn" onclick="nextQuestion()">Cau hoi tiep theo</button>
-  </div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+  let currentPin = null;
+  let playerCount = 0;
 
-  <!-- 2. ĐOẠN CODE XỬ LÝ ĐẶT DƯỚI CÙNG -->
-  <script>
-    const socket = io("wss://kahoot-clone-app.onrender.com", { transports: ["websocket"] }); 
-    let currentPin = '';
+  const el = id => document.getElementById(id);
 
-    document.getElementById('createBtn').addEventListener('click', () => {
-      socket.emit('create-game');
-    });
+  socket.on('connect', () => {
+    socket.emit('create-game');
+  });
 
-    socket.on('game-created', ({ pin, quizTitle }) => {
-      currentPin = pin;
-      document.getElementById('createBtn').style.display = 'none';
-      document.getElementById('startBtn').style.display = 'block';
-      document.getElementById('titleDisplay').innerText = "Quiz: " + quizTitle;
-      document.getElementById('pinDisplay').innerText = pin;
-    });
+  socket.on('game-created', ({ pin, quizTitle, joinUrl, qrCodeDataUrl }) => {
+    currentPin = pin;
+    el('quizTitle').textContent = quizTitle || 'Untitled Quiz';
+    el('pin').textContent = pin;
 
-    socket.on('player-joined', (nick) => {
-      const li = document.createElement('li');
-      li.innerText = nick;
-      document.getElementById('playerList').appendChild(li);
-    });
-
-    document.getElementById('startBtn').addEventListener('click', () => {
-      document.getElementById('lobby').style.display = 'none';
-      document.getElementById('gameZone').style.display = 'block';
-      socket.emit('start-question', { pin: currentPin });
-    });
-
-    socket.on('render-question-host', ({ questionText, options }) => {
-      document.getElementById('questionText').innerText = questionText;
-      const optDiv = document.getElementById('optionsList');
-      optDiv.innerHTML = '';
-      options.forEach((opt, index) => {
-        optDiv.innerHTML += `<p><strong>Dap an ${index + 1}:</strong> ${opt}</p>`;
-      });
-    });
-
-    socket.on('timer-update', (timeLeft) => {
-      document.getElementById('timer').innerText = timeLeft;
-    });
-
-    socket.on('show-leaderboard', (top5) => {
-      document.getElementById('gameZone').style.display = 'none';
-      document.getElementById('leaderboardZone').style.display = 'block';
-      const list = document.getElementById('leaderboardList');
-      list.innerHTML = '';
-      top5.forEach(p => {
-        list.innerHTML += `<li><strong>${p.nickname}</strong>: ${p.score} diem</li>`;
-      });
-    });
-
-    function nextQuestion() {
-      document.getElementById('leaderboardZone').style.display = 'none';
-      document.getElementById('gameZone').style.display = 'block';
-      socket.emit('start-question', { pin: currentPin });
+    try {
+      const domain = new URL(joinUrl).host + '/play';
+      el('joinDomain').textContent = domain;
+    } catch (e) {
+      el('joinDomain').textContent = joinUrl;
     }
 
-    socket.on('game-over', () => {
-      alert("Tro choi ket thuc!");
-      location.reload();
+    if (qrCodeDataUrl) {
+      el('qrWrap').innerHTML = `<img src="${qrCodeDataUrl}" alt="QR code tham gia" />`;
+    }
+
+    el('pin').dataset.joinUrl = joinUrl;
+  });
+
+  socket.on('player-list-update', ({ count, players }) => {
+    playerCount = count;
+    el('playersHeading').textContent = `Players (${count})`;
+    el('startBtn').textContent = `Start (${count})`;
+    el('startBtn').disabled = count === 0;
+
+    el('waitingText').classList.toggle('hidden', count > 0);
+    el('playerGrid').innerHTML = players
+      .map(name => `<div class="player-chip">${escapeHtml(name)}</div>`)
+      .join('');
+  });
+
+  socket.on('render-question-host', ({ questionText, options, questionNumber, totalQuestions }) => {
+    el('lobbyView').classList.add('hidden');
+    el('leaderboardView').classList.add('hidden');
+    el('questionView').classList.remove('hidden');
+
+    el('qMeta').textContent = `Câu ${questionNumber} / ${totalQuestions}`;
+    el('qText').textContent = questionText;
+    el('optionsGrid').innerHTML = options
+      .map(opt => `<div class="option-card">${escapeHtml(opt)}</div>`)
+      .join('');
+    el('startBtn').disabled = true;
+  });
+
+  socket.on('timer-update', (t) => {
+    el('timerDisplay').textContent = Math.max(t, 0);
+  });
+
+  socket.on('show-leaderboard', (leaderboard) => {
+    el('questionView').classList.add('hidden');
+    el('leaderboardView').classList.remove('hidden');
+
+    el('lbList').innerHTML = leaderboard.map((p, i) => `
+      <div class="lb-row">
+        <div><span class="lb-rank">${i + 1}.</span> ${escapeHtml(p.nickname)}</div>
+        <div class="lb-score">${p.score}</div>
+      </div>
+    `).join('') || `<p class="waiting">Chưa có ai trả lời câu này.</p>`;
+  });
+
+  socket.on('game-over', () => {
+    el('questionView').classList.add('hidden');
+    el('leaderboardView').classList.add('hidden');
+    el('lobbyView').classList.remove('hidden');
+    el('lobbyView').innerHTML = `<div class="card" style="grid-column:1/-1; text-align:center;">
+      <h2 style="font-family:'Baloo 2',sans-serif;">🎉 Trò chơi kết thúc!</h2>
+      <p class="waiting">Cảm ơn mọi người đã tham gia.</p>
+    </div>`;
+  });
+
+  function startQuestion() {
+    if (!currentPin) return;
+    el('startBtn').disabled = true;
+    socket.emit('start-question', { pin: currentPin });
+  }
+
+  function copyJoinLink() {
+    const url = el('pin').dataset.joinUrl;
+    if (!url) return;
+    navigator.clipboard.writeText(url).then(() => {
+      const hint = el('copyHint');
+      hint.textContent = 'Đã sao chép liên kết!';
+      hint.classList.add('copied');
+      setTimeout(() => {
+        hint.textContent = 'Click the code to copy the join link';
+        hint.classList.remove('copied');
+      }, 1800);
     });
-  </script>
+  }
+
+  function confirmClose() {
+    if (confirm('Thoát khỏi phòng chơi? Trò chơi sẽ kết thúc cho tất cả người chơi.')) {
+      window.location.href = '/';
+    }
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, m => ({
+      '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+    }[m]));
+  }
+</script>
 </body>
 </html>
