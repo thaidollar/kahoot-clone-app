@@ -30,7 +30,7 @@
 
   <!-- 2. ĐOẠN CODE XỬ LÝ ĐẶT DƯỚI CÙNG -->
   <script>
-    const socket = io(); 
+    cconst socket = io("wss://kahoot-clone-app.onrender.com", { transports: ["websocket"] });
     let currentPin = '';
 
     document.getElementById('createBtn').addEventListener('click', () => {
