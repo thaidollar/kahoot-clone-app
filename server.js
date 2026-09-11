@@ -5,22 +5,17 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-
-// Cấu hình PORT động để Render tự cấp phát, nếu chạy local sẽ dùng 3000
 const PORT = process.env.PORT || 3000;
 
 const io = new Server(server, {
   cors: { origin: "*" }
 });
 
-// Phục vụ các file giao diện tĩnh
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Trình duyệt vào đường dẫn gốc /host sẽ xem màn hình Host, /player sẽ xem màn hình Player
 app.get('/host', (req, res) => res.sendFile(path.join(__dirname, 'public', 'host.html')));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'player.html')));
 
-// --- GIẢ LẬP DATA TRÊN RAM ĐỂ DEPLOY NHANH KHÔNG CẦN SET UP MONGODB PHỨC TẠP ---
 const mockQuiz = {
   title: "Đố Vui Công Nghệ 2026",
   questions: [
@@ -32,7 +27,6 @@ const mockQuiz = {
 const games = {};
 
 io.on('connection', (socket) => {
-  // Host tạo phòng
   socket.on('create-game', () => {
     const pin = Math.floor(100000 + Math.random() * 900000).toString();
     games[pin] = { hostId: socket.id, quizData: mockQuiz, currentQuestionIndex: 0, players: {}, questionStartTime: 0 };
@@ -40,7 +34,6 @@ io.on('connection', (socket) => {
     socket.emit('game-created', { pin, quizTitle: mockQuiz.title });
   });
 
-  // Player tham gia
   socket.on('join-game', ({ pin, nickname }) => {
     if (!games[pin]) return socket.emit('join-error', 'Không tìm thấy phòng!');
     games[pin].players[socket.id] = { nickname, score: 0 };
@@ -49,7 +42,6 @@ io.on('connection', (socket) => {
     io.to(games[pin].hostId).emit('player-joined', nickname);
   });
 
-  // Host bắt đầu câu hỏi
   socket.on('start-question', ({ pin }) => {
     const game = games[pin];
     if (!game) return;
@@ -76,7 +68,6 @@ io.on('connection', (socket) => {
     }, 1000);
   });
 
-  // Chấm điểm
   socket.on('submit-answer', ({ pin, answerIndex }) => {
     const game = games[pin];
     if (!game || !game.players[socket.id]) return;
@@ -94,4 +85,4 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(PORT, () => console.log(`Server chạy trên port ${PORT}`));
+server.listen(PORT, () => console.log(`Server chạy trên port ${PORT}`))
