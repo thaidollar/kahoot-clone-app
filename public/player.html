@@ -25,6 +25,127 @@
     --blue: #4B57E8; --blue-dark:#3944C9;
     --yellow: #E8B23D; --yellow-dark:#C6941F;
     --green: #2FB380; --green-dark:#1F8F65;
+    /* Question screen - giống Host */
+.player-question-wrap{
+  width:100%;
+  max-width:720px;
+}
+
+.question-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:22px;
+}
+
+.q-meta{
+  color:var(--muted);
+  font-size:14px;
+  font-weight:700;
+}
+
+.timer-pill{
+  font-family:'Baloo 2', sans-serif;
+  font-weight:800;
+  font-size:18px;
+  background:var(--primary);
+  color:#fff;
+  min-width:58px;
+  padding:8px 14px;
+  border-radius:999px;
+  text-align:center;
+  box-shadow:0 5px 0 var(--primary-dark);
+}
+
+.player-question{
+  font-family:'Baloo 2', sans-serif;
+  font-size:32px;
+  line-height:1.2;
+  font-weight:800;
+  text-align:center;
+  color:var(--navy);
+  margin:0 0 28px 0;
+}
+
+.options-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+}
+
+.opt-btn{
+  min-height:110px;
+  border:none;
+  border-radius:18px;
+  padding:20px;
+  cursor:pointer;
+
+  font-family:'Inter', sans-serif;
+  color:#fff;
+  font-weight:700;
+  font-size:17px;
+  line-height:1.3;
+
+  box-shadow:0 6px 0 rgba(0,0,0,.15);
+  transition:transform .08s ease, opacity .15s;
+}
+
+.opt-btn:active{
+  transform:translateY(4px);
+}
+
+.opt-btn.shape-0{
+  background:var(--red);
+  box-shadow:0 6px 0 var(--red-dark);
+}
+
+.opt-btn.shape-1{
+  background:var(--blue);
+  box-shadow:0 6px 0 var(--blue-dark);
+}
+
+.opt-btn.shape-2{
+  background:var(--yellow);
+  box-shadow:0 6px 0 var(--yellow-dark);
+}
+
+.opt-btn.shape-3{
+  background:var(--green);
+  box-shadow:0 6px 0 var(--green-dark);
+}
+
+.opt-btn:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+
+.opt-shape{
+  display:block;
+  font-size:24px;
+  margin-bottom:8px;
+}
+
+@media(max-width:600px){
+  .screen{
+    padding:16px;
+  }
+
+  .player-question{
+    font-size:25px;
+    margin-bottom:20px;
+  }
+
+  .options-grid{
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+
+  .opt-btn{
+    min-height:125px;
+    padding:14px 8px;
+    font-size:15px;
+  }
+}
   }
   *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
   html,body{
@@ -262,18 +383,52 @@
     showScreen('waitingView');
   });
 
-  socket.on('show-controller', ({ optionCount }) => {
-    const grid = el('optionsGrid');
-    grid.innerHTML = '';
-    for (let i = 0; i < optionCount; i++) {
-      const btn = document.createElement('button');
-      btn.className = `opt-btn shape-${i % 4}`;
-      btn.innerHTML = `<span class="opt-shape">${shapeIcons[i % 4]}</span>Lựa chọn ${i + 1}`;
-      btn.onclick = () => submitAnswer(i);
-      grid.appendChild(btn);
-    }
-    showScreen('controllerView');
+  socket.on('show-controller', ({
+  questionText,
+  options,
+  questionNumber,
+  totalQuestions
+}) => {
+
+  // Hiển thị câu hỏi
+  el('playerQMeta').textContent =
+    `Câu ${questionNumber} / ${totalQuestions}`;
+
+  el('playerQuestion').textContent = questionText;
+
+  // Tạo các đáp án
+  const grid = el('optionsGrid');
+  grid.innerHTML = '';
+
+  options.forEach((option, i) => {
+
+    const btn = document.createElement('button');
+
+    btn.className = `opt-btn shape-${i % 4}`;
+
+    btn.innerHTML = `
+      <span class="opt-shape">
+        ${shapeIcons[i % 4]}
+      </span>
+      ${escapeHtml(option)}
+    `;
+
+    btn.onclick = () => submitAnswer(i);
+
+    grid.appendChild(btn);
   });
+
+  showScreen('controllerView');
+});
+  function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, m => ({
+    '&':'&amp;',
+    '<':'&lt;',
+    '>':'&gt;',
+    '"':'&quot;',
+    "'":'&#39;'
+  }[m]));
+}
 
   socket.on('timer-update', (t) => {
     el('timerPill').textContent = `${Math.max(t, 0)}s`;
