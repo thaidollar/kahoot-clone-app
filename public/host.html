@@ -654,15 +654,27 @@
     </div>
 
     <!-- REVEAL VIEW -->
-    <div class="reveal-stage hidden" id="revealView">
-      <p class="reveal-q" id="revealQText">...</p>
-      <div id="revealBars"></div>
-      <button
-  class="lb-continue-btn hidden"
-  id="leaderboardBtn"
-  onclick="requestLeaderboard()">
-  🏆 Xem bảng xếp hạng cuối cùng
-</button>
+ <div class="reveal-stage hidden" id="revealView">
+
+  <p class="reveal-q" id="revealQText">...</p>
+
+  <div id="revealBars"></div>
+
+  <button
+    class="lb-continue-btn"
+    id="nextQuestionBtn"
+    onclick="nextQuestion()">
+    Câu tiếp theo →
+  </button>
+
+  <button
+    class="lb-continue-btn hidden"
+    id="finalLeaderboardBtn"
+    onclick="requestLeaderboard()">
+    🏆 Xem bảng xếp hạng cuối cùng
+  </button>
+
+</div>
 
 <button
   class="lb-continue-btn"
@@ -813,17 +825,16 @@
   ({
     questionText,
     options,
-    correctIndex
+    correctIndex,
+    questionNumber,
+    totalQuestions,
+    isLast
   }) => {
 
-    el('questionView')
-      .classList.add('hidden');
+    el('questionView').classList.add('hidden');
+    el('revealView').classList.remove('hidden');
 
-    el('revealView')
-      .classList.remove('hidden');
-
-    el('revealQText')
-      .textContent = questionText;
+    el('revealQText').textContent = questionText;
 
     const maxCount =
       Math.max(
@@ -881,43 +892,36 @@
 
       }).join('');
 
-    // --------------------------------
-    // Xác định câu cuối
-    // --------------------------------
 
-    const currentQuestion =
-      window.currentQuestionNumber || 1;
-
-    const totalQuestions =
-      window.totalQuestionCount || 1;
-
-    const isLast =
-      currentQuestion >= totalQuestions;
-
-    const lbBtn =
-      el('leaderboardBtn');
+    // ==================================
+    // QUAN TRỌNG: CHỌN NÚT TIẾP THEO
+    // ==================================
 
     const nextBtn =
-      el('continueQuestionBtn');
+      el('nextQuestionBtn');
+
+    const leaderboardBtn =
+      el('finalLeaderboardBtn');
+
 
     if (isLast) {
 
-      // Câu cuối → chỉ hiện leaderboard
-      lbBtn.classList.remove('hidden');
-
+      // CÂU CUỐI
       nextBtn.classList.add('hidden');
+
+      leaderboardBtn.classList.remove('hidden');
 
     } else {
 
-      // Câu thường → chỉ hiện Next
-      lbBtn.classList.add('hidden');
-
+      // CHƯA PHẢI CÂU CUỐI
       nextBtn.classList.remove('hidden');
 
+      leaderboardBtn.classList.add('hidden');
+
     }
+
   }
 );
-
   socket.on(
   'show-leaderboard',
   ({
