@@ -93,7 +93,13 @@ function askQuestion(pin) {
     totalQuestions: game.quizData.questions.length,
     totalPlayers
   });
-  io.to(pin).emit('show-controller', { optionCount: currentQuestion.options.length });
+  io.to(pin).emit('show-controller', {
+  questionText: currentQuestion.questionText,
+  options: currentQuestion.options.map(o => o.text),
+  questionNumber: game.currentQuestionIndex + 1,
+  totalQuestions: game.quizData.questions.length,
+  optionCount: currentQuestion.options.length
+});
 
   let timeLeft = currentQuestion.timeLimit;
   if (game.timerInterval) clearInterval(game.timerInterval);
