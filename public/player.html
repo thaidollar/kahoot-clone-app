@@ -50,6 +50,10 @@
     font-family:'Baloo 2', sans-serif; font-weight:800; font-size:22px;
     color:var(--primary); margin-bottom: 22px;
   }
+  .pin-hint{
+    font-size:14px; color:var(--muted); margin: -12px 0 18px 0;
+  }
+  .pin-hint b{ color:var(--primary); font-family:'Baloo 2', sans-serif; letter-spacing:2px; }
 
   label{ display:block; text-align:left; font-size:13px; font-weight:600; color:var(--muted); margin: 14px 0 6px 0; }
   input[type=text], input[type=tel]{
@@ -128,12 +132,18 @@
   <div class="screen" id="joinView">
     <div class="card">
       <div class="brand">🎉 Đố Vui</div>
+      <p class="pin-hint hidden" id="pinHint">Phòng <b id="pinHintValue"></b></p>
 
-      <label for="pinInput">Mã PIN trò chơi</label>
-      <input type="tel" id="pinInput" maxlength="6" inputmode="numeric" placeholder="------" />
+      <div id="pinFieldWrap">
+        <label for="pinInput">Mã PIN trò chơi</label>
+        <input type="tel" id="pinInput" maxlength="6" inputmode="numeric" placeholder="------" />
+      </div>
 
       <label for="nickInput">Tên hiển thị</label>
       <input type="text" id="nickInput" maxlength="20" placeholder="Nhập tên của bạn" />
+
+      <label for="empIdInput">Mã số nhân viên (MSNV)</label>
+      <input type="text" id="empIdInput" maxlength="20" placeholder="Nhập MSNV" />
 
       <button class="primary-btn" id="joinBtn" onclick="joinGame()">Tham gia</button>
       <p class="error-msg" id="joinError"></p>
@@ -187,11 +197,18 @@
 
   let myNickname = '';
   let myPin = '';
+  let pinFromUrl = false;
 
-  // Pre-fill PIN from ?pin= in URL (e.g. from QR scan)
+  // Vào phòng trực tiếp qua QR/link (?pin=...) -> bỏ qua bước nhập PIN
   const urlParams = new URLSearchParams(window.location.search);
   const prefillPin = urlParams.get('pin');
-  if (prefillPin) el('pinInput').value = prefillPin;
+  if (prefillPin && /^\d{6}$/.test(prefillPin)) {
+    pinFromUrl = true;
+    myPin = prefillPin;
+    el('pinFieldWrap').classList.add('hidden');
+    el('pinHint').classList.remove('hidden');
+    el('pinHintValue').textContent = `#${prefillPin}`;
+  }
 
   el('pinInput').addEventListener('input', (e) => {
     e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
@@ -203,16 +220,18 @@
   }
 
   function joinGame() {
-    const pin = el('pinInput').value.trim();
+    const pin = pinFromUrl ? myPin : el('pinInput').value.trim();
     const nickname = el('nickInput').value.trim();
+    const employeeId = el('empIdInput').value.trim();
     el('joinError').textContent = '';
 
-    if (pin.length !== 6) return el('joinError').textContent = 'Mã PIN phải có 6 chữ số.';
+    if (!pinFromUrl && pin.length !== 6) return el('joinError').textContent = 'Mã PIN phải có 6 chữ số.';
     if (!nickname) return el('joinError').textContent = 'Vui lòng nhập tên của bạn.';
+    if (!employeeId) return el('joinError').textContent = 'Vui lòng nhập mã số nhân viên (MSNV).';
 
     el('joinBtn').disabled = true;
     myPin = pin;
-    socket.emit('join-game', { pin, nickname });
+    socket.emit('join-game', { pin, nickname, employeeId });
   }
 
   socket.on('join-error', (msg) => {
@@ -281,6 +300,7 @@
 
   // Enter key submits join form
   el('nickInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') joinGame(); });
+  el('empIdInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') joinGame(); });
   el('pinInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') joinGame(); });
 </script>
 </body>
