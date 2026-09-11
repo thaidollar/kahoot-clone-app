@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <title>Kahoot Clone - Man hinh Host</title>
+  <!-- 1. BẮT BUỘC PHẢI TẢI THƯ VIỆN NÀY TRƯỚC -->
   <script src="https://socket.io"></script>
 </head>
 <body>
   <div id="lobby">
-    <h1 id="titleDisplay">Dang tai...</h1>
+    <h1 id="titleDisplay">Hệ thống sẵn sàng</h1>
     <button id="createBtn">Tao Phong Choi</button>
     <h2>Ma PIN Tham Gia: <span id="pinDisplay" style="color:red; font-size:32px;"></span></h2>
     <h3>Danh sach nguoi choi:</h3>
@@ -27,8 +28,9 @@
     <button id="nextBtn" onclick="nextQuestion()">Cau hoi tiep theo</button>
   </div>
 
+  <!-- 2. ĐOẠN CODE XỬ LÝ ĐẶT DƯỚI CÙNG -->
   <script>
-    const socket = io();
+    const socket = io(); 
     let currentPin = '';
 
     document.getElementById('createBtn').addEventListener('click', () => {
