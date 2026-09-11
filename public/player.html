@@ -245,6 +245,292 @@
   .result-points{ color:var(--muted); font-size:15px; }
 
   .gameover-emoji{ font-size:48px; margin-bottom:10px; }
+  /* =====================================
+   FINAL LEADERBOARD
+===================================== */
+
+.leaderboard-player{
+  width:100%;
+  max-width:620px;
+  margin:auto;
+  text-align:center;
+}
+
+.leaderboard-title{
+  font-family:'Baloo 2',sans-serif;
+  font-size:32px;
+  font-weight:800;
+  color:var(--navy);
+
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:10px;
+
+  margin-bottom:4px;
+}
+
+.leaderboard-subtitle{
+  color:var(--muted);
+  font-size:14px;
+  margin-bottom:30px;
+}
+
+
+/* =====================================
+   PODIUM
+===================================== */
+
+.podium{
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+
+  gap:10px;
+
+  min-height:300px;
+
+  margin-bottom:25px;
+}
+
+.podium-item{
+  width:30%;
+
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.podium-avatar{
+  width:62px;
+  height:62px;
+
+  border-radius:50%;
+
+  background:var(--primary);
+  color:#fff;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  font-family:'Baloo 2',sans-serif;
+  font-size:27px;
+  font-weight:800;
+
+  border:4px solid #fff;
+
+  box-shadow:
+    0 5px 18px rgba(43,52,130,.18);
+}
+
+.podium-name{
+  font-family:'Baloo 2',sans-serif;
+
+  font-size:17px;
+  font-weight:800;
+
+  color:var(--navy);
+
+  margin-top:8px;
+
+  max-width:130px;
+
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.podium-score{
+  font-size:15px;
+  font-weight:800;
+
+  color:var(--primary);
+
+  margin:3px 0 8px;
+}
+
+.podium-block{
+  width:100%;
+
+  display:flex;
+  justify-content:center;
+  align-items:center;
+
+  border-radius:12px 12px 0 0;
+
+  font-family:'Baloo 2',sans-serif;
+  font-weight:800;
+
+  font-size:32px;
+
+  color:#fff;
+
+  background:var(--primary);
+}
+
+
+/* 🥇 FIRST */
+
+.podium-item.rank-1{
+  order:2;
+}
+
+.podium-item.rank-1 .podium-block{
+  height:145px;
+  font-size:44px;
+}
+
+.podium-item.rank-1 .podium-avatar{
+  width:76px;
+  height:76px;
+  font-size:32px;
+}
+
+
+/* 🥈 SECOND */
+
+.podium-item.rank-2{
+  order:1;
+}
+
+.podium-item.rank-2 .podium-block{
+  height:105px;
+}
+
+
+/* 🥉 THIRD */
+
+.podium-item.rank-3{
+  order:3;
+}
+
+.podium-item.rank-3 .podium-block{
+  height:80px;
+}
+
+
+/* =====================================
+   RANKING 4+
+===================================== */
+
+.ranking-list{
+  width:100%;
+}
+
+.ranking-row{
+  display:flex;
+  align-items:center;
+
+  background:#fff;
+
+  border:1px solid var(--border);
+
+  border-radius:14px;
+
+  padding:11px 15px;
+
+  margin-bottom:8px;
+
+  text-align:left;
+}
+
+.ranking-number{
+  width:35px;
+
+  font-family:'Baloo 2',sans-serif;
+
+  font-size:18px;
+  font-weight:800;
+
+  color:var(--muted);
+}
+
+.ranking-avatar{
+  width:36px;
+  height:36px;
+
+  border-radius:50%;
+
+  background:var(--primary);
+
+  color:#fff;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  font-weight:800;
+
+  margin-right:10px;
+}
+
+.ranking-name{
+  flex:1;
+
+  font-weight:700;
+
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.ranking-score{
+  font-family:'Baloo 2',sans-serif;
+
+  font-weight:800;
+
+  color:var(--navy);
+}
+
+
+/* =====================================
+   MOBILE
+===================================== */
+
+@media(max-width:600px){
+
+  .leaderboard-title{
+    font-size:26px;
+  }
+
+  .podium{
+    min-height:250px;
+    gap:6px;
+  }
+
+  .podium-avatar{
+    width:52px;
+    height:52px;
+  }
+
+  .podium-item.rank-1 .podium-avatar{
+    width:64px;
+    height:64px;
+  }
+
+  .podium-name{
+    font-size:14px;
+    max-width:100px;
+  }
+
+  .podium-score{
+    font-size:13px;
+  }
+
+  .podium-item.rank-1 .podium-block{
+    height:125px;
+  }
+
+  .podium-item.rank-2 .podium-block{
+    height:90px;
+  }
+
+  .podium-item.rank-3 .podium-block{
+    height:70px;
+  }
+
+}
 </style>
 </head>
 <body>
@@ -307,7 +593,37 @@
       <p class="result-points" id="resultPoints">+1000 điểm</p>
     </div>
   </div>
+<!-- FINAL LEADERBOARD -->
+<div class="screen hidden" id="leaderboardView">
 
+  <div class="leaderboard-player">
+
+    <div class="leaderboard-title">
+      🏆
+      <span>BẢNG XẾP HẠNG</span>
+    </div>
+
+    <div
+      class="leaderboard-subtitle"
+      id="leaderboardSubtitle">
+      Kết quả chung cuộc
+    </div>
+
+    <!-- TOP 3 -->
+    <div
+      class="podium"
+      id="podium">
+    </div>
+
+    <!-- OTHER PLAYERS -->
+    <div
+      class="ranking-list"
+      id="rankingList">
+    </div>
+
+  </div>
+
+</div>
   <!-- GAME OVER VIEW -->
   <div class="screen hidden" id="gameOverView">
     <div class="card">
@@ -343,9 +659,24 @@
   });
 
   function showScreen(id) {
-    ['joinView','waitingView','controllerView','resultView','gameOverView']
-      .forEach(v => el(v).classList.toggle('hidden', v !== id));
-  }
+
+  [
+    'joinView',
+    'waitingView',
+    'controllerView',
+    'resultView',
+    'leaderboardView',
+    'gameOverView'
+  ].forEach(v => {
+
+    el(v).classList.toggle(
+      'hidden',
+      v !== id
+    );
+
+  });
+
+}
 
   function joinGame() {
     const pin = pinFromUrl ? myPin : el('pinInput').value.trim();
@@ -459,7 +790,142 @@
     el('joinBtn').disabled = false;
     alert('Người chủ trò đã rời phòng. Trò chơi đã kết thúc.');
   });
+socket.on(
+  'show-leaderboard',
+  ({
+    leaderboard,
+    afterQuestionNumber,
+    totalQuestions
+  }) => {
 
+    el('leaderboardSubtitle').textContent =
+      `Kết quả chung cuộc • Sau câu ${afterQuestionNumber}/${totalQuestions}`;
+
+    renderFinalLeaderboard(leaderboard);
+
+    showScreen('leaderboardView');
+  }
+);
+  function renderFinalLeaderboard(leaderboard) {
+
+  const podium =
+    el('podium');
+
+  const rankingList =
+    el('rankingList');
+
+  podium.innerHTML = '';
+
+  rankingList.innerHTML = '';
+
+  if (!leaderboard || leaderboard.length === 0) {
+
+    rankingList.innerHTML =
+      '<p>Chưa có dữ liệu xếp hạng.</p>';
+
+    return;
+  }
+
+  // -------------------------------
+  // TOP 3
+  // -------------------------------
+
+  const top3 =
+    leaderboard.slice(0, 3);
+
+  // Hiển thị theo thứ tự:
+  // 2 - 1 - 3
+  const podiumOrder = [1, 0, 2];
+
+  podiumOrder.forEach(index => {
+
+    if (!top3[index]) return;
+
+    const player =
+      top3[index];
+
+    const rank =
+      index + 1;
+
+    const item =
+      document.createElement('div');
+
+    item.className =
+      `podium-item rank-${rank}`;
+
+    item.innerHTML = `
+
+      <div class="podium-avatar">
+        ${escapeHtml(
+          player.nickname
+            .charAt(0)
+            .toUpperCase()
+        )}
+      </div>
+
+      <div class="podium-name">
+        ${escapeHtml(player.nickname)}
+      </div>
+
+      <div class="podium-score">
+        ${player.score}
+      </div>
+
+      <div class="podium-block">
+        ${rank}
+      </div>
+
+    `;
+
+    podium.appendChild(item);
+
+  });
+
+  // -------------------------------
+  // RANKING 4+
+  // -------------------------------
+
+  leaderboard
+    .slice(3)
+    .forEach((player, index) => {
+
+      const rank =
+        index + 4;
+
+      const row =
+        document.createElement('div');
+
+      row.className =
+        'ranking-row';
+
+      row.innerHTML = `
+
+        <div class="ranking-number">
+          ${rank}
+        </div>
+
+        <div class="ranking-avatar">
+          ${escapeHtml(
+            player.nickname
+              .charAt(0)
+              .toUpperCase()
+          )}
+        </div>
+
+        <div class="ranking-name">
+          ${escapeHtml(player.nickname)}
+        </div>
+
+        <div class="ranking-score">
+          ${player.score}
+        </div>
+
+      `;
+
+      rankingList.appendChild(row);
+
+    });
+}
   // Enter key submits join form
   el('nickInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') joinGame(); });
   el('empIdInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') joinGame(); });
