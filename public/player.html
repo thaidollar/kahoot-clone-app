@@ -1,80 +1,288 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <title>Kahoot Clone - Nguoi choi</title>
-  <!-- Nhúng đúng thư viện Socket.IO từ Server Render cấp phát -->
-  <script src="/socket.io/socket.io.js"></script>
-  <style>
-    .btn { width: 45%; height: 100px; margin: 2%; font-size: 20px; color: white; border: none; cursor: pointer; border-radius: 8px; font-weight: bold; }
-    .red { background-color: #e21b3c; }
-    .blue { background-color: #1368ce; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Tham gia — Đố Vui</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #EEF0FB;
+    --stripe: #E5E8FA;
+    --card: #FFFFFF;
+    --primary: #4B57E8;
+    --primary-dark: #3944C9;
+    --primary-disabled: #B7BDF2;
+    --navy: #1B2350;
+    --muted: #8D93B8;
+    --border: #E7E9F6;
+    --good: #2FB380;
+    --bad: #E15B5B;
+
+    --red: #E15B5B; --red-dark:#C43F3F;
+    --blue: #4B57E8; --blue-dark:#3944C9;
+    --yellow: #E8B23D; --yellow-dark:#C6941F;
+    --green: #2FB380; --green-dark:#1F8F65;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{
+    margin:0; padding:0; min-height:100%;
+    background:
+      repeating-linear-gradient(135deg, var(--stripe) 0 2px, transparent 2px 34px),
+      var(--bg);
+    font-family:'Inter', sans-serif; color:var(--navy);
+  }
+  .screen{
+    min-height:100vh; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; padding:24px;
+  }
+  .hidden{ display:none !important; }
+
+  .card{
+    background:var(--card); border:1px solid var(--border); border-radius:22px;
+    box-shadow: 0 10px 30px rgba(43,52,130,.06);
+    padding: 34px 28px; width:100%; max-width: 380px; text-align:center;
+  }
+
+  .brand{
+    font-family:'Baloo 2', sans-serif; font-weight:800; font-size:22px;
+    color:var(--primary); margin-bottom: 22px;
+  }
+
+  label{ display:block; text-align:left; font-size:13px; font-weight:600; color:var(--muted); margin: 14px 0 6px 0; }
+  input[type=text], input[type=tel]{
+    width:100%; padding:14px 16px; font-size:18px; font-family:'Inter', sans-serif;
+    border:1.5px solid var(--border); border-radius:12px; outline:none;
+    background:#F8F9FE; color:var(--navy); font-weight:600;
+    transition: border-color .15s;
+  }
+  input[type=tel]{ letter-spacing:6px; text-align:center; font-family:'Baloo 2', sans-serif; font-size:24px; }
+  input:focus{ border-color: var(--primary); background:#fff; }
+
+  .primary-btn{
+    margin-top:22px; width:100%;
+    font-family:'Baloo 2', sans-serif; font-weight:700; font-size:17px;
+    background:var(--primary); color:#fff; border:none; border-radius:14px;
+    padding:15px; cursor:pointer; box-shadow: 0 6px 0 var(--primary-dark);
+    transition: transform .08s ease;
+  }
+  .primary-btn:active{ transform:translateY(4px); box-shadow:0 2px 0 var(--primary-dark); }
+  .primary-btn:disabled{ background:var(--primary-disabled); box-shadow:none; cursor:not-allowed; }
+
+  .error-msg{
+    margin-top:14px; color:var(--bad); font-size:14px; font-weight:600; min-height:18px;
+  }
+
+  /* Waiting room */
+  .avatar{
+    width:76px; height:76px; border-radius:50%; background:var(--primary);
+    color:#fff; font-family:'Baloo 2', sans-serif; font-weight:700; font-size:30px;
+    display:flex; align-items:center; justify-content:center; margin:0 auto 18px auto;
+  }
+  .waiting-nick{ font-family:'Baloo 2', sans-serif; font-size:22px; font-weight:700; margin:0 0 6px 0; }
+  .waiting-sub{ color:var(--muted); font-size:15px; margin:0; }
+  .dots span{
+    display:inline-block; width:8px; height:8px; margin:0 3px; border-radius:50%;
+    background:var(--primary); animation: bounce 1.2s infinite ease-in-out;
+  }
+  .dots span:nth-child(2){ animation-delay:.15s; }
+  .dots span:nth-child(3){ animation-delay:.3s; }
+  @keyframes bounce{ 0%,80%,100%{ transform:scale(.6); opacity:.5; } 40%{ transform:scale(1); opacity:1; } }
+
+  /* Controller */
+  .controller-wrap{ width:100%; max-width:480px; }
+  .timer-pill{
+    font-family:'Baloo 2', sans-serif; font-weight:800; font-size:16px;
+    background:#fff; border:1px solid var(--border); color:var(--navy);
+    width:auto; display:inline-block; padding:8px 18px; border-radius:999px; margin-bottom:16px;
+  }
+  .options-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .opt-btn{
+    border:none; border-radius:18px; padding: 34px 10px; cursor:pointer;
+    font-family:'Baloo 2', sans-serif; color:#fff; font-weight:700; font-size:17px;
+    box-shadow: 0 6px 0 rgba(0,0,0,.15); transition: transform .08s ease, opacity .15s;
+  }
+  .opt-btn:active{ transform:translateY(4px); }
+  .opt-btn.shape-0{ background:var(--red); box-shadow:0 6px 0 var(--red-dark); }
+  .opt-btn.shape-1{ background:var(--blue); box-shadow:0 6px 0 var(--blue-dark); }
+  .opt-btn.shape-2{ background:var(--yellow); box-shadow:0 6px 0 var(--yellow-dark); }
+  .opt-btn.shape-3{ background:var(--green); box-shadow:0 6px 0 var(--green-dark); }
+  .opt-btn:disabled{ opacity:.45; cursor:not-allowed; }
+  .opt-shape{ display:block; font-size:22px; margin-bottom:8px; }
+
+  /* Result */
+  .result-icon{ font-size:52px; margin-bottom:10px; }
+  .result-title{ font-family:'Baloo 2', sans-serif; font-size:24px; font-weight:800; margin:0 0 6px 0; }
+  .result-title.correct{ color:var(--good); }
+  .result-title.wrong{ color:var(--bad); }
+  .result-points{ color:var(--muted); font-size:15px; }
+
+  .gameover-emoji{ font-size:48px; margin-bottom:10px; }
+</style>
 </head>
 <body>
-  <div id="joinForm" style="margin-top: 50px; text-align: center;">
-    <h2>KẾT NỐI TRÒ CHƠI</h2>
-    <input type="text" id="pinInput" placeholder="Ma PIN phong choi" style="padding: 10px; font-size: 16px;"><br><br>
-    <input type="text" id="nickInput" placeholder="Biet danh cua ban" style="padding: 10px; font-size: 16px;"><br><br>
-    <button id="joinBtn" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">Tham Gia Game</button>
+
+  <!-- JOIN VIEW -->
+  <div class="screen" id="joinView">
+    <div class="card">
+      <div class="brand">🎉 Đố Vui</div>
+
+      <label for="pinInput">Mã PIN trò chơi</label>
+      <input type="tel" id="pinInput" maxlength="6" inputmode="numeric" placeholder="------" />
+
+      <label for="nickInput">Tên hiển thị</label>
+      <input type="text" id="nickInput" maxlength="20" placeholder="Nhập tên của bạn" />
+
+      <button class="primary-btn" id="joinBtn" onclick="joinGame()">Tham gia</button>
+      <p class="error-msg" id="joinError"></p>
+    </div>
   </div>
 
-  <div id="waiting" style="display:none; text-align: center; margin-top: 50px;">
-    <h2>Ban da vao phong! Kiem tra man hinh lon.</h2>
+  <!-- WAITING VIEW -->
+  <div class="screen hidden" id="waitingView">
+    <div class="card">
+      <div class="avatar" id="waitAvatar">?</div>
+      <p class="waiting-nick" id="waitNick"></p>
+      <p class="waiting-sub">Đang chờ người chủ trò bắt đầu<br/>
+        <span class="dots"><span></span><span></span><span></span></span>
+      </p>
+    </div>
   </div>
 
-  <div id="controller" style="display:none; text-align: center; margin-top: 50px;">
-    <h2>Chon khoi mau dung tren man hinh:</h2>
-    <button class="btn red" onclick="sendAnswer(0)">Do (1)</button>
-    <button class="btn blue" onclick="sendAnswer(1)">Xanh duong (2)</button>
+  <!-- CONTROLLER VIEW -->
+  <div class="screen hidden" id="controllerView">
+    <div class="controller-wrap">
+      <div style="text-align:center;">
+        <div class="timer-pill" id="timerPill">15s</div>
+      </div>
+      <div class="options-grid" id="optionsGrid"></div>
+    </div>
   </div>
 
-  <script>
-    // Khởi tạo kết nối tự động nhận diện domain của Render
-    const socket = io("wss://kahoot-clone-app.onrender.com", { transports: ["websocket"] });
-    let myPin = '';
+  <!-- RESULT VIEW -->
+  <div class="screen hidden" id="resultView">
+    <div class="card">
+      <div class="result-icon" id="resultIcon">✅</div>
+      <p class="result-title correct" id="resultTitle">Chính xác!</p>
+      <p class="result-points" id="resultPoints">+1000 điểm</p>
+    </div>
+  </div>
 
-    document.getElementById('joinBtn').addEventListener('click', () => {
-      myPin = document.getElementById('pinInput').value.trim();
-      const nickname = document.getElementById('nickInput').value.trim();
-      if(!myPin || !nickname) return alert("Vui long nhap du PIN va Biet danh");
-      
-      // Gửi tín hiệu tham gia lên máy chủ Render
-      socket.emit('join-game', { pin: myPin, nickname });
-    });
+  <!-- GAME OVER VIEW -->
+  <div class="screen hidden" id="gameOverView">
+    <div class="card">
+      <div class="gameover-emoji">🏆</div>
+      <p class="result-title" style="color:var(--navy);">Trò chơi kết thúc!</p>
+      <p class="result-points">Cảm ơn bạn đã tham gia.</p>
+    </div>
+  </div>
 
-    socket.on('joined-successfully', () => {
-      document.getElementById('joinForm').style.display = 'none';
-      document.getElementById('waiting').style.display = 'block';
-    });
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+  const el = id => document.getElementById(id);
+  const shapeIcons = ['▲', '◆', '●', '■'];
 
-    socket.on('show-controller', () => {
-      document.getElementById('waiting').style.display = 'none';
-      document.getElementById('controller').style.display = 'block';
-    });
+  let myNickname = '';
+  let myPin = '';
 
-    function sendAnswer(answerIndex) {
-      socket.emit('submit-answer', { pin: myPin, answerIndex: answerIndex });
-      document.getElementById('controller').style.display = 'none';
-      document.getElementById('waiting').innerText = "Da nop bai! Dang cho het gio...";
-      document.getElementById('waiting').style.display = 'block';
+  // Pre-fill PIN from ?pin= in URL (e.g. from QR scan)
+  const urlParams = new URLSearchParams(window.location.search);
+  const prefillPin = urlParams.get('pin');
+  if (prefillPin) el('pinInput').value = prefillPin;
+
+  el('pinInput').addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
+  });
+
+  function showScreen(id) {
+    ['joinView','waitingView','controllerView','resultView','gameOverView']
+      .forEach(v => el(v).classList.toggle('hidden', v !== id));
+  }
+
+  function joinGame() {
+    const pin = el('pinInput').value.trim();
+    const nickname = el('nickInput').value.trim();
+    el('joinError').textContent = '';
+
+    if (pin.length !== 6) return el('joinError').textContent = 'Mã PIN phải có 6 chữ số.';
+    if (!nickname) return el('joinError').textContent = 'Vui lòng nhập tên của bạn.';
+
+    el('joinBtn').disabled = true;
+    myPin = pin;
+    socket.emit('join-game', { pin, nickname });
+  }
+
+  socket.on('join-error', (msg) => {
+    el('joinBtn').disabled = false;
+    el('joinError').textContent = msg;
+  });
+
+  socket.on('joined-successfully', ({ nickname }) => {
+    myNickname = nickname;
+    el('waitAvatar').textContent = nickname.charAt(0).toUpperCase();
+    el('waitNick').textContent = nickname;
+    showScreen('waitingView');
+  });
+
+  socket.on('show-controller', ({ optionCount }) => {
+    const grid = el('optionsGrid');
+    grid.innerHTML = '';
+    for (let i = 0; i < optionCount; i++) {
+      const btn = document.createElement('button');
+      btn.className = `opt-btn shape-${i % 4}`;
+      btn.innerHTML = `<span class="opt-shape">${shapeIcons[i % 4]}</span>Lựa chọn ${i + 1}`;
+      btn.onclick = () => submitAnswer(i);
+      grid.appendChild(btn);
     }
+    showScreen('controllerView');
+  });
 
-    socket.on('answer-result', (data) => {
-      document.getElementById('waiting').innerText = data.correct 
-        ? `Chinh xac! +${data.points} pts` 
-        : "Sai roi!";
-    });
+  socket.on('timer-update', (t) => {
+    el('timerPill').textContent = `${Math.max(t, 0)}s`;
+  });
 
-    socket.on('question-ended', () => {
-      document.getElementById('controller').style.display = 'none';
-      if(document.getElementById('waiting').style.display === 'none' || document.getElementById('waiting').innerText.includes("Dang cho")) {
-         document.getElementById('waiting').innerText = "Het gio lam bai!";
-         document.getElementById('waiting').style.display = 'block';
-      }
-    });
+  function submitAnswer(index) {
+    document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true);
+    socket.emit('submit-answer', { pin: myPin, answerIndex: index });
+  }
 
-    socket.on('join-error', (err) => alert(err));
-  </script>
+  socket.on('answer-result', ({ correct, points }) => {
+    el('resultIcon').textContent = correct ? '✅' : '❌';
+    const title = el('resultTitle');
+    title.textContent = correct ? 'Chính xác!' : 'Chưa đúng rồi!';
+    title.className = `result-title ${correct ? 'correct' : 'wrong'}`;
+    el('resultPoints').textContent = correct ? `+${points} điểm` : 'Cố lên câu sau nhé!';
+    showScreen('resultView');
+  });
+
+  socket.on('question-ended', () => {
+    // Nếu chưa trả lời kịp, hiển thị màn hình chờ với thông báo hết giờ
+    if (!el('resultView').classList.contains('hidden')) return;
+    el('resultIcon').textContent = '⏰';
+    el('resultTitle').textContent = 'Hết giờ!';
+    el('resultTitle').className = 'result-title wrong';
+    el('resultPoints').textContent = 'Bạn chưa kịp trả lời.';
+    showScreen('resultView');
+  });
+
+  socket.on('game-over', () => {
+    showScreen('gameOverView');
+  });
+
+  socket.on('host-disconnected', () => {
+    el('joinError').textContent = '';
+    showScreen('joinView');
+    el('joinBtn').disabled = false;
+    alert('Người chủ trò đã rời phòng. Trò chơi đã kết thúc.');
+  });
+
+  // Enter key submits join form
+  el('nickInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') joinGame(); });
+  el('pinInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') joinGame(); });
+</script>
 </body>
 </html>
+
