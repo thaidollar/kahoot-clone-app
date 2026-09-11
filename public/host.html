@@ -234,6 +234,375 @@
     border:none; border-radius:14px; font-size:16px; font-weight:700;
     padding:14px 28px; cursor:pointer; box-shadow: 0 6px 0 var(--primary-dark);
   }
+  /* =====================================================
+   PODIUM LEADERBOARD
+   ===================================================== */
+
+.leaderboard-stage{
+  position:relative;
+  max-width:900px;
+  margin:0 auto;
+  overflow:hidden;
+}
+
+.podium{
+  height:460px;
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  gap:18px;
+  margin:20px auto 10px;
+  position:relative;
+  z-index:2;
+}
+
+/* từng vị trí */
+
+.podium-item{
+  width:230px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  position:relative;
+}
+
+/* player information */
+
+.podium-player{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-end;
+  position:relative;
+  z-index:3;
+}
+
+.podium-medal{
+  font-size:42px;
+  line-height:1;
+  margin-bottom:8px;
+  filter:drop-shadow(0 5px 5px rgba(0,0,0,.15));
+}
+
+.podium-avatar{
+  width:82px;
+  height:82px;
+  border-radius:50%;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  background:#fff;
+  color:var(--navy);
+
+  font-family:'Baloo 2',sans-serif;
+  font-size:36px;
+  font-weight:800;
+
+  border:5px solid #fff;
+
+  box-shadow:
+    0 8px 25px rgba(27,35,80,.18);
+}
+
+.podium-name{
+  margin-top:10px;
+  font-family:'Baloo 2',sans-serif;
+  font-size:21px;
+  font-weight:800;
+  color:var(--navy);
+
+  max-width:210px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.podium-score{
+  font-family:'Baloo 2',sans-serif;
+  font-size:18px;
+  font-weight:800;
+  color:var(--primary);
+  margin-top:2px;
+}
+
+/* podium block */
+
+.podium-block{
+  width:100%;
+  display:flex;
+  justify-content:center;
+  align-items:flex-end;
+
+  margin-top:12px;
+
+  border-radius:18px 18px 0 0;
+
+  box-shadow:
+    inset 0 2px rgba(255,255,255,.5),
+    0 -8px 30px rgba(27,35,80,.08);
+}
+
+.podium-block span{
+  font-family:'Baloo 2',sans-serif;
+  font-size:90px;
+  line-height:1;
+  font-weight:800;
+  opacity:.9;
+}
+
+/* =========================
+   RANK 1
+   ========================= */
+
+.rank-1{
+  width:260px;
+  z-index:5;
+}
+
+.rank-1 .podium-block{
+  height:270px;
+  background:linear-gradient(
+    180deg,
+    #FFD83D 0%,
+    #F5BD20 100%
+  );
+
+  border-top:8px solid #FFE77A;
+}
+
+.rank-1 .podium-block span{
+  color:rgba(255,255,255,.85);
+}
+
+.rank-1 .podium-avatar{
+  width:100px;
+  height:100px;
+  font-size:42px;
+  border-color:#FFD83D;
+
+  box-shadow:
+    0 0 0 8px rgba(255,216,61,.25),
+    0 12px 35px rgba(27,35,80,.22);
+}
+
+.rank-1 .podium-name{
+  font-size:25px;
+}
+
+.rank-1 .podium-score{
+  font-size:21px;
+}
+
+.winner-crown{
+  font-size:44px;
+  height:48px;
+
+  animation:
+    crownFloat 1.5s ease-in-out infinite;
+}
+
+@keyframes crownFloat{
+  0%,100%{
+    transform:translateY(0) rotate(-3deg);
+  }
+
+  50%{
+    transform:translateY(-8px) rotate(3deg);
+  }
+}
+
+/* =========================
+   RANK 2
+   ========================= */
+
+.rank-2 .podium-block{
+  height:205px;
+
+  background:linear-gradient(
+    180deg,
+    #C9D0DC 0%,
+    #9DA7B8 100%
+  );
+
+  border-top:7px solid #E9EDF3;
+}
+
+.rank-2 .podium-block span{
+  color:rgba(255,255,255,.75);
+}
+
+.rank-2 .podium-avatar{
+  border-color:#C9D0DC;
+}
+
+/* =========================
+   RANK 3
+   ========================= */
+
+.rank-3 .podium-block{
+  height:155px;
+
+  background:linear-gradient(
+    180deg,
+    #E9B47B 0%,
+    #C9834D 100%
+  );
+
+  border-top:7px solid #F4C99D;
+}
+
+.rank-3 .podium-block span{
+  color:rgba(255,255,255,.75);
+}
+
+.rank-3 .podium-avatar{
+  border-color:#E9B47B;
+}
+
+/* =========================
+   RANK 4+
+   ========================= */
+
+.lb-rest{
+  width:100%;
+  max-width:650px;
+  margin:25px auto 0;
+  position:relative;
+  z-index:4;
+}
+
+.lb-rest .lb-row{
+  animation:rankSlide .35s ease both;
+}
+
+@keyframes rankSlide{
+  from{
+    opacity:0;
+    transform:translateY(15px);
+  }
+
+  to{
+    opacity:1;
+    transform:translateY(0);
+  }
+}
+
+/* =========================
+   CONFETTI
+   ========================= */
+
+.confetti-container{
+  position:absolute;
+  inset:0;
+
+  overflow:hidden;
+  pointer-events:none;
+
+  z-index:10;
+}
+
+.confetti{
+  position:absolute;
+  top:-30px;
+
+  width:9px;
+  height:18px;
+
+  opacity:.95;
+
+  animation:
+    confettiFall linear forwards;
+}
+
+@keyframes confettiFall{
+  0%{
+    transform:
+      translate3d(0,-20px,0)
+      rotate(0deg);
+  }
+
+  100%{
+    transform:
+      translate3d(var(--drift),700px,0)
+      rotate(720deg);
+  }
+}
+
+/* =========================
+   MOBILE
+   ========================= */
+
+@media(max-width:700px){
+
+  .leaderboard-stage{
+    padding:0 8px;
+  }
+
+  .podium{
+    height:360px;
+    gap:6px;
+  }
+
+  .podium-item{
+    width:30%;
+  }
+
+  .rank-1{
+    width:36%;
+  }
+
+  .podium-avatar{
+    width:58px;
+    height:58px;
+    font-size:25px;
+  }
+
+  .rank-1 .podium-avatar{
+    width:70px;
+    height:70px;
+    font-size:30px;
+  }
+
+  .podium-name{
+    max-width:110px;
+    font-size:15px;
+  }
+
+  .rank-1 .podium-name{
+    font-size:17px;
+  }
+
+  .podium-score{
+    font-size:14px;
+  }
+
+  .podium-medal{
+    font-size:27px;
+  }
+
+  .winner-crown{
+    font-size:30px;
+    height:34px;
+  }
+
+  .rank-1 .podium-block{
+    height:205px;
+  }
+
+  .rank-2 .podium-block{
+    height:155px;
+  }
+
+  .rank-3 .podium-block{
+    height:115px;
+  }
+
+  .podium-block span{
+    font-size:55px;
+  }
+}
 </style>
 </head>
 <body>
@@ -292,16 +661,74 @@
     </div>
 
     <!-- LEADERBOARD VIEW -->
-    <div class="leaderboard-stage hidden" id="leaderboardView">
-      <div class="lb-heading-row">
-        <h2>🏆 Bảng xếp hạng</h2>
-        <span class="lb-tag" id="lbTag">Sau câu 1/2</span>
+<!-- LEADERBOARD VIEW -->
+<div class="leaderboard-stage hidden" id="leaderboardView">
+
+  <div class="lb-heading-row">
+    <h2 id="leaderboardTitle">🏆 Bảng xếp hạng</h2>
+    <span class="lb-tag" id="lbTag">Sau câu 1/2</span>
+  </div>
+
+  <!-- PODIUM TOP 3 -->
+  <div class="podium" id="podium">
+
+    <!-- Hạng 2 -->
+    <div class="podium-item rank-2" id="podium2">
+      <div class="podium-player">
+        <div class="podium-medal">🥈</div>
+        <div class="podium-avatar" id="avatar2">?</div>
+        <div class="podium-name" id="name2">---</div>
+        <div class="podium-score" id="score2">0</div>
       </div>
-      <div id="lbList"></div>
-      <button class="next-btn" id="nextBtn" onclick="nextQuestion()">Câu tiếp theo →</button>
+
+      <div class="podium-block">
+        <span>2</span>
+      </div>
+    </div>
+
+    <!-- Hạng 1 -->
+    <div class="podium-item rank-1" id="podium1">
+      <div class="winner-crown">👑</div>
+
+      <div class="podium-player">
+        <div class="podium-medal">🥇</div>
+        <div class="podium-avatar" id="avatar1">?</div>
+        <div class="podium-name" id="name1">---</div>
+        <div class="podium-score" id="score1">0</div>
+      </div>
+
+      <div class="podium-block">
+        <span>1</span>
+      </div>
+    </div>
+
+    <!-- Hạng 3 -->
+    <div class="podium-item rank-3" id="podium3">
+      <div class="podium-player">
+        <div class="podium-medal">🥉</div>
+        <div class="podium-avatar" id="avatar3">?</div>
+        <div class="podium-name" id="name3">---</div>
+        <div class="podium-score" id="score3">0</div>
+      </div>
+
+      <div class="podium-block">
+        <span>3</span>
+      </div>
     </div>
 
   </div>
+
+  <!-- CONFETTI -->
+  <div class="confetti-container" id="confettiContainer"></div>
+
+  <!-- RANK 4+ -->
+  <div class="lb-rest" id="lbList"></div>
+
+  <button class="next-btn" id="nextBtn" onclick="nextQuestion()">
+    Câu tiếp theo →
+  </button>
+
+</div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
@@ -392,25 +819,204 @@
     }).join('');
   });
 
-  socket.on('show-leaderboard', ({ leaderboard, afterQuestionNumber, totalQuestions, isLast }) => {
+  socket.on(
+  'show-leaderboard',
+  ({
+    leaderboard,
+    podium,
+    afterQuestionNumber,
+    totalQuestions,
+    isLast
+  }) => {
+
     el('revealView').classList.add('hidden');
     el('questionView').classList.add('hidden');
     el('leaderboardView').classList.remove('hidden');
 
-    el('lbTag').textContent = `Sau câu ${afterQuestionNumber} / ${totalQuestions}`;
-    el('nextBtn').textContent = isLast ? 'Kết thúc trò chơi 🏁' : 'Câu tiếp theo →';
+    // Header
+    el('lbTag').textContent =
+      `Sau câu ${afterQuestionNumber} / ${totalQuestions}`;
 
-    el('lbList').innerHTML = leaderboard.map((p, i) => `
-      <div class="lb-row ${i === 0 ? 'first' : ''}">
-        <div class="lb-left">
-          <span class="lb-rank">${i + 1}</span>
-          <span class="lb-avatar">${escapeHtml(p.nickname.charAt(0).toUpperCase())}</span>
-          <span>${escapeHtml(p.nickname)}</span>
+    el('nextBtn').textContent =
+      isLast
+        ? 'Kết thúc trò chơi 🏁'
+        : 'Câu tiếp theo →';
+
+    // ===============================
+    // PODIUM TOP 3
+    // ===============================
+
+    const top3 = podium || leaderboard.slice(0, 3);
+
+    renderPodiumPlayer(
+      1,
+      top3[0]
+    );
+
+    renderPodiumPlayer(
+      2,
+      top3[1]
+    );
+
+    renderPodiumPlayer(
+      3,
+      top3[2]
+    );
+
+    // ===============================
+    // RANK 4+
+    // ===============================
+
+    const rest = leaderboard.slice(3);
+
+    el('lbList').innerHTML = rest.map((p, i) => {
+
+      const rank = i + 4;
+
+      return `
+        <div class="lb-row">
+
+          <div class="lb-left">
+
+            <span class="lb-rank">
+              ${rank}
+            </span>
+
+            <span class="lb-avatar">
+              ${escapeHtml(
+                p.nickname.charAt(0).toUpperCase()
+              )}
+            </span>
+
+            <span>
+              ${escapeHtml(p.nickname)}
+            </span>
+
+          </div>
+
+          <div class="lb-score">
+            ${p.score}
+          </div>
+
         </div>
-        <div class="lb-score">${p.score}</div>
-      </div>
-    `).join('') || `<p class="waiting">Chưa có ai ghi điểm.</p>`;
-  });
+      `;
+function renderPodiumPlayer(rank, player) {
+
+  const avatar = el(`avatar${rank}`);
+  const name = el(`name${rank}`);
+  const score = el(`score${rank}`);
+
+  if (!player) {
+
+    avatar.textContent = '—';
+    name.textContent = 'Chưa có';
+    score.textContent = '0';
+
+    return;
+  }
+
+  avatar.textContent =
+    player.nickname.charAt(0).toUpperCase();
+
+  name.textContent =
+    player.nickname;
+
+  score.textContent =
+    `${player.score} điểm`;
+}
+      function createConfetti() {
+
+  const container =
+    el('confettiContainer');
+
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  const shapes = [
+    '▰',
+    '●',
+    '◆',
+    '★',
+    '▲'
+  ];
+
+  for (let i = 0; i < 100; i++) {
+
+    const piece =
+      document.createElement('span');
+
+    piece.className = 'confetti';
+
+    const left =
+      Math.random() * 100;
+
+    const delay =
+      Math.random() * 1.5;
+
+    const duration =
+      2.5 + Math.random() * 3;
+
+    const drift =
+      (Math.random() - 0.5) * 350;
+
+    piece.style.left =
+      `${left}%`;
+
+    piece.style.animationDelay =
+      `${delay}s`;
+
+    piece.style.animationDuration =
+      `${duration}s`;
+
+    piece.style.setProperty(
+      '--drift',
+      `${drift}px`
+    );
+
+    piece.textContent =
+      shapes[
+        Math.floor(
+          Math.random() * shapes.length
+        )
+      ];
+
+    // Dùng màu ngẫu nhiên
+    const colors = [
+      '#F5C400',
+      '#E94B6A',
+      '#4B57E8',
+      '#2FB380',
+      '#8B5CF6',
+      '#F97316'
+    ];
+
+    piece.style.color =
+      colors[
+        Math.floor(
+          Math.random() * colors.length
+        )
+      ];
+
+    container.appendChild(piece);
+  }
+
+  // Xóa confetti sau khi animation hoàn thành
+  setTimeout(() => {
+
+    container.innerHTML = '';
+
+  }, 7000);
+}
+    }).join('');
+
+    // ===============================
+    // CONFETTI
+    // ===============================
+
+    createConfetti();
+  }
+);
 
   socket.on('game-over', () => {
     el('questionView').classList.add('hidden');
