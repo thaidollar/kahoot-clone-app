@@ -222,19 +222,33 @@ io.on('connection', (socket) => {
 
   // ---- HOST: yêu cầu xem bảng xếp hạng (sau màn reveal) ----
   socket.on('request-leaderboard', ({ pin }) => {
-    const game = games[pin];
-    if (!game || game.hostId !== socket.id) return;
+  const game = games[pin];
+  if (!game || game.hostId !== socket.id) return;
 
-    const leaderboard = getPlayerList(game).sort((a, b) => b.score - a.score).slice(0, 10);
-    const isLast = game.currentQuestionIndex + 1 >= game.quizData.questions.length;
+  // Sắp xếp điểm cao → thấp
+  const leaderboard = getPlayerList(game)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10);
 
-    io.to(game.hostId).emit('show-leaderboard', {
-      leaderboard,
-      afterQuestionNumber: game.currentQuestionIndex + 1,
-      totalQuestions: game.quizData.questions.length,
-      isLast
-    });
+  const isLast =
+    game.currentQuestionIndex + 1 >= game.quizData.questions.length;
+
+  // Lấy Top 3 cho màn hình Podium
+  const podium = leaderboard.slice(0, 3);
+
+  io.to(game.hostId).emit('show-leaderboard', {
+    leaderboard,
+    podium,
+
+    afterQuestionNumber: game.currentQuestionIndex + 1,
+    totalQuestions: game.quizData.questions.length,
+
+    isLast,
+
+    // Dùng để host biết đây là bảng xếp hạng cuối cùng
+    isFinalLeaderboard: isLast
   });
+});
 
   // ---- HOST: chuyển sang câu hỏi kế tiếp ----
   socket.on('next-question', ({ pin }) => {
