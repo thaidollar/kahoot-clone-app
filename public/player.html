@@ -295,6 +295,26 @@
   let myNickname = '';
   let myPin = '';
   let pinFromUrl = false;
+  let hasJoined = false; // đã tham gia phòng thành công trong phiên này chưa
+
+  // Định danh thiết bị cố định, không đổi kể cả khi mất kết nối / tải lại trang.
+  // Dùng để server nhận ra "đây vẫn là người chơi cũ" khi tự động kết nối lại.
+  function getDeviceId() {
+    let id = localStorage.getItem('quizDeviceId');
+    if (!id) {
+      id = (crypto.randomUUID ? crypto.randomUUID() : `dev-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+      localStorage.setItem('quizDeviceId', id);
+    }
+    return id;
+  }
+  const deviceId = getDeviceId();
+
+  function saveSession(pin) {
+    localStorage.setItem('quizSession', JSON.stringify({ pin }));
+  }
+  function clearSession() {
+    localStorage.removeItem('quizSession');
+  }
 
   // Vào phòng trực tiếp qua QR/link (?pin=...) -> bỏ qua bước nhập PIN
   const urlParams = new URLSearchParams(window.location.search);
@@ -306,6 +326,19 @@
     el('pinHint').classList.remove('hidden');
     el('pinHintValue').textContent = `#${prefillPin}`;
   }
+
+  // Nếu trước đó đã từng tham gia phòng này (cùng deviceId, cùng PIN) -> thử tự động vào lại
+  // trước khi bắt người chơi nhập tên/MSNV lại từ đầu.
+  let attemptingAutoRejoin = false;
+  try {
+    const saved = JSON.parse(localStorage.getItem('quizSession') || 'null');
+    if (saved?.pin && (!prefillPin || saved.pin === prefillPin)) {
+      myPin = saved.pin;
+      attemptingAutoRejoin = true;
+      el('joinBtn').disabled = true;
+      el('joinError').textContent = 'Đang kết nối lại vào phòng...';
+    }
+  } catch (e) { /* localStorage hỏng thì bỏ qua, vào form nhập bình thường */ }
 
   el('pinInput').addEventListener('input', (e) => {
     e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
@@ -322,6 +355,14 @@
     }[m]));
   }
 
+  // Mỗi khi socket kết nối (lần đầu HOẶC sau khi mất kết nối rồi tự nối lại),
+  // nếu đã từng tham gia phòng thì tự động xin vào lại thay vì bắt nhập lại từ đầu.
+  socket.on('connect', () => {
+    if ((hasJoined || attemptingAutoRejoin) && myPin) {
+      socket.emit('rejoin-game', { pin: myPin, deviceId });
+    }
+  });
+
   function joinGame() {
     const pin = pinFromUrl ? myPin : el('pinInput').value.trim();
     const nickname = el('nickInput').value.trim();
@@ -334,19 +375,57 @@
 
     el('joinBtn').disabled = true;
     myPin = pin;
-    socket.emit('join-game', { pin, nickname, employeeId });
+    socket.emit('join-game', { pin, nickname, employeeId, deviceId });
   }
 
   socket.on('join-error', (msg) => {
     el('joinBtn').disabled = false;
     el('joinError').textContent = msg;
+    attemptingAutoRejoin = false;
   });
 
   socket.on('joined-successfully', ({ nickname }) => {
     myNickname = nickname;
+    hasJoined = true;
+    attemptingAutoRejoin = false;
+    saveSession(myPin);
     el('waitAvatar').textContent = nickname.charAt(0).toUpperCase();
     el('waitNick').textContent = nickname;
     showScreen('waitingView');
+  });
+
+  // Tự động vào lại phòng thành công sau khi mất kết nối tạm thời
+  socket.on('rejoined-successfully', ({ nickname }) => {
+    myNickname = nickname;
+    hasJoined = true;
+    attemptingAutoRejoin = false;
+    saveSession(myPin);
+    el('joinError').textContent = '';
+    el('joinBtn').disabled = false;
+    el('waitAvatar').textContent = nickname.charAt(0).toUpperCase();
+    el('waitNick').textContent = nickname;
+    // Mặc định về màn chờ; nếu đang giữa câu hỏi, server sẽ gửi tiếp 'show-controller' ngay sau đó.
+    showScreen('waitingView');
+  });
+
+  // Không tìm lại được phiên cũ (phòng đã đóng, hoặc quá thời gian ân hạn) -> quay về nhập lại từ đầu
+  socket.on('rejoin-failed', () => {
+    attemptingAutoRejoin = false;
+    hasJoined = false;
+    clearSession();
+    el('joinBtn').disabled = false;
+    el('joinError').textContent = 'Phiên trước đã hết hạn, vui lòng tham gia lại.';
+    showScreen('joinView');
+  });
+
+  // Trả lời đã được ghi nhận trước khi mất kết nối -> không cho bấm lại, chỉ báo đang chờ
+  socket.on('already-answered', () => {
+    document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true);
+    el('resultIcon').textContent = '⏳';
+    el('resultTitle').textContent = 'Đã gửi câu trả lời';
+    el('resultTitle').className = 'result-title';
+    el('resultPoints').textContent = 'Đang chờ kết thúc câu hỏi...';
+    showScreen('resultView');
   });
 
   socket.on('show-controller', ({ questionText, options, questionNumber, totalQuestions }) => {
@@ -444,10 +523,13 @@
   }
 
   socket.on('game-over', () => {
+    clearSession();
     showScreen('gameOverView');
   });
 
   socket.on('host-disconnected', () => {
+    clearSession();
+    hasJoined = false;
     el('joinError').textContent = '';
     showScreen('joinView');
     el('joinBtn').disabled = false;
