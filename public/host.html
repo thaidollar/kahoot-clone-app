@@ -203,30 +203,60 @@
     padding:14px 30px; cursor:pointer; box-shadow: 0 6px 0 var(--primary-dark);
   }
 
-  /* ---- Leaderboard ---- */
-  .leaderboard-stage{ max-width: 640px; margin: 0 auto; }
-  .lb-heading-row{
-    display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;
-  }
+  /* ---- Leaderboard (podium, giống player) ---- */
+  .leaderboard-stage{ max-width: 720px; margin: 0 auto; text-align:center; }
   .lb-tag{
-    font-size:13px; font-weight:600; color:var(--muted);
+    display:inline-block; font-size:13px; font-weight:600; color:var(--muted);
     background:#fff; border:1px solid var(--border); border-radius:999px; padding:7px 14px;
+    margin-bottom: 8px;
   }
-  .leaderboard-stage h2{ font-family:'Baloo 2', sans-serif; margin:0; font-size:20px; }
-  .lb-row{
-    display:flex; align-items:center; justify-content:space-between;
-    background: var(--card); border:1px solid var(--border); border-radius:14px;
-    padding: 12px 18px; margin-bottom:10px; font-weight:600;
+  .leaderboard-title{
+    font-family:'Baloo 2',sans-serif; font-size:32px; font-weight:800; color:var(--navy);
+    display:flex; justify-content:center; align-items:center; gap:10px; margin: 0 0 4px 0;
   }
-  .lb-row.first{ border-color: var(--primary); background: #F1F2FC; }
-  .lb-left{ display:flex; align-items:center; gap:12px; }
-  .lb-rank{ color: var(--muted); width:22px; font-weight:800; }
-  .lb-avatar{
-    width:34px; height:34px; border-radius:50%; background:var(--primary); color:#fff;
-    display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700;
-    font-family:'Baloo 2', sans-serif;
+
+  .podium{
+    display:flex; align-items:flex-end; justify-content:center;
+    gap:14px; min-height:300px; margin: 24px 0;
   }
-  .lb-score{ color: var(--primary); font-weight:800; }
+  .podium-item{ width:26%; max-width:180px; display:flex; flex-direction:column; align-items:center; }
+  .podium-avatar{
+    width:62px; height:62px; border-radius:50%; background:var(--primary); color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Baloo 2',sans-serif; font-size:27px; font-weight:800;
+    border:4px solid #fff; box-shadow:0 5px 18px rgba(43,52,130,.18);
+  }
+  .podium-name{
+    font-family:'Baloo 2',sans-serif; font-size:17px; font-weight:800; color:var(--navy);
+    margin-top:8px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .podium-score{ font-size:15px; font-weight:800; color:var(--primary); margin:3px 0 8px; }
+  .podium-block{
+    width:100%; display:flex; justify-content:center; align-items:center;
+    border-radius:12px 12px 0 0; font-family:'Baloo 2',sans-serif; font-weight:800;
+    font-size:32px; color:#fff; background:var(--primary);
+  }
+  .podium-item.rank-1{ order:2; }
+  .podium-item.rank-1 .podium-block{ height:170px; font-size:48px; }
+  .podium-item.rank-1 .podium-avatar{ width:80px; height:80px; font-size:34px; }
+  .podium-item.rank-2{ order:1; }
+  .podium-item.rank-2 .podium-block{ height:125px; }
+  .podium-item.rank-3{ order:3; }
+  .podium-item.rank-3 .podium-block{ height:95px; }
+
+  .ranking-list{ width:100%; max-width:520px; margin: 0 auto; text-align:left; }
+  .ranking-row{
+    display:flex; align-items:center; background:#fff; border:1px solid var(--border);
+    border-radius:14px; padding:11px 15px; margin-bottom:8px;
+  }
+  .ranking-number{ width:35px; font-family:'Baloo 2',sans-serif; font-size:18px; font-weight:800; color:var(--muted); }
+  .ranking-avatar{
+    width:36px; height:36px; border-radius:50%; background:var(--primary); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:800; margin-right:10px;
+    font-family:'Baloo 2', sans-serif; flex-shrink:0;
+  }
+  .ranking-name{ flex:1; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ranking-score{ font-family:'Baloo 2',sans-serif; font-weight:800; color:var(--navy); }
 
   .next-btn{
     display:block; margin: 26px auto 0 auto;
@@ -291,13 +321,12 @@
       <button class="lb-continue-btn" id="revealContinueBtn">Câu tiếp theo →</button>
     </div>
 
-    <!-- LEADERBOARD VIEW -->
+    <!-- LEADERBOARD VIEW (podium, giống player) -->
     <div class="leaderboard-stage hidden" id="leaderboardView">
-      <div class="lb-heading-row">
-        <h2>🏆 Bảng xếp hạng</h2>
-        <span class="lb-tag" id="lbTag">Sau câu 1/2</span>
-      </div>
-      <div id="lbList"></div>
+      <span class="lb-tag" id="lbTag">Sau câu 1/2</span>
+      <div class="leaderboard-title">🏆 <span>BẢNG XẾP HẠNG</span></div>
+      <div class="podium" id="podium"></div>
+      <div class="ranking-list" id="rankingList"></div>
       <button class="next-btn" id="nextBtn" onclick="nextQuestion()">Câu tiếp theo →</button>
     </div>
 
@@ -404,17 +433,52 @@
     el('lbTag').textContent = `Sau câu ${afterQuestionNumber} / ${totalQuestions}`;
     el('nextBtn').textContent = isLast ? 'Kết thúc trò chơi 🏁' : 'Câu tiếp theo →';
 
-    el('lbList').innerHTML = leaderboard.map((p, i) => `
-      <div class="lb-row ${i === 0 ? 'first' : ''}">
-        <div class="lb-left">
-          <span class="lb-rank">${i + 1}</span>
-          <span class="lb-avatar">${escapeHtml(p.nickname.charAt(0).toUpperCase())}</span>
-          <span>${escapeHtml(p.nickname)}</span>
-        </div>
-        <div class="lb-score">${p.score}</div>
-      </div>
-    `).join('') || `<p class="waiting">Chưa có ai ghi điểm.</p>`;
+    renderPodiumLeaderboard(leaderboard);
   });
+
+  function renderPodiumLeaderboard(leaderboard) {
+    const podium = el('podium');
+    const rankingList = el('rankingList');
+    podium.innerHTML = '';
+    rankingList.innerHTML = '';
+
+    if (!leaderboard || leaderboard.length === 0) {
+      rankingList.innerHTML = '<p class="waiting">Chưa có ai ghi điểm.</p>';
+      return;
+    }
+
+    const top3 = leaderboard.slice(0, 3);
+    const podiumOrder = [1, 0, 2]; // hiển thị 2 - 1 - 3, CSS order lo phần còn lại
+
+    podiumOrder.forEach(index => {
+      if (!top3[index]) return;
+      const player = top3[index];
+      const rank = index + 1;
+
+      const item = document.createElement('div');
+      item.className = `podium-item rank-${rank}`;
+      item.innerHTML = `
+        <div class="podium-avatar">${escapeHtml(player.nickname.charAt(0).toUpperCase())}</div>
+        <div class="podium-name">${escapeHtml(player.nickname)}</div>
+        <div class="podium-score">${player.score}</div>
+        <div class="podium-block">${rank}</div>
+      `;
+      podium.appendChild(item);
+    });
+
+    leaderboard.slice(3).forEach((player, index) => {
+      const rank = index + 4;
+      const row = document.createElement('div');
+      row.className = 'ranking-row';
+      row.innerHTML = `
+        <div class="ranking-number">${rank}</div>
+        <div class="ranking-avatar">${escapeHtml(player.nickname.charAt(0).toUpperCase())}</div>
+        <div class="ranking-name">${escapeHtml(player.nickname)}</div>
+        <div class="ranking-score">${player.score}</div>
+      `;
+      rankingList.appendChild(row);
+    });
+  }
 
   socket.on('game-over', () => {
     showHostScreen('lobbyView');
