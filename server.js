@@ -11,6 +11,11 @@ const PORT = process.env.PORT || 3000;
 // Đổi thành domain thật của bạn khi deploy (vd: "https://giga-quizzes.com")
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 
+// Thời gian ân hạn cho phép người chơi mất kết nối tạm thời (màn hình tắt, mất mạng...)
+// quay lại phòng mà không bị xoá khỏi danh sách. 60 giây là đủ cho hầu hết trường hợp
+// điện thoại khoá màn hình rồi mở lại.
+const DISCONNECT_GRACE_MS = 60000;
+
 const io = new Server(server, {
   cors: { origin: "*" }
 });
@@ -48,6 +53,9 @@ const mockQuiz = {
 };
 
 const games = {}; // pin -> game state
+// socket.id (tạm thời, đổi mỗi lần reconnect) -> { pin, deviceId (cố định) }
+// Dùng để tra ngược người chơi từ socket đang gửi sự kiện lên.
+const socketIndex = new Map();
 
 function getPlayerList(game) {
   return Object.values(game.players).map(p => ({ nickname: p.nickname, score: p.score }));
@@ -67,7 +75,19 @@ function endGame(pin) {
   const game = games[pin];
   if (!game) return;
   if (game.timerInterval) clearInterval(game.timerInterval);
+  for (const player of Object.values(game.players)) {
+    if (player.disconnectTimer) clearTimeout(player.disconnectTimer);
+  }
   delete games[pin];
+}
+
+// Xoá hẳn người chơi khỏi phòng (chỉ gọi sau khi hết thời gian ân hạn)
+function removePlayer(pin, deviceId) {
+  const game = games[pin];
+  if (!game || !game.players[deviceId]) return;
+  delete game.players[deviceId];
+  game.answers.delete(deviceId);
+  broadcastPlayerList(pin);
 }
 
 // Gửi câu hỏi hiện tại (dùng cho cả "Start" lần đầu lẫn "Next Question")
@@ -82,7 +102,7 @@ function askQuestion(pin) {
   }
 
   game.questionStartTime = Date.now();
-  game.answers = new Map(); // socketId -> answerIndex, reset mỗi câu
+  game.answers = new Map(); // deviceId -> answerIndex, reset mỗi câu
 
   const totalPlayers = Object.keys(game.players).length;
 
@@ -135,14 +155,10 @@ function revealAnswer(pin) {
 
   io.to(game.hostId).emit('show-reveal', {
     questionText: q.questionText,
-    options: q.options.map((o, i) => ({
-      text: o.text,
-      count: counts[i]
-    })),
+    options: q.options.map((o, i) => ({ text: o.text, count: counts[i] })),
     correctIndex,
     questionNumber: game.currentQuestionIndex + 1,
     totalQuestions: game.quizData.questions.length,
-    // Quan trọng: host.html dùng để quyết định nút "Câu tiếp theo" hay "Xem bảng xếp hạng"
     isLast: game.currentQuestionIndex + 1 >= game.quizData.questions.length
   });
 
@@ -162,7 +178,7 @@ io.on('connection', (socket) => {
       hostId: socket.id,
       quizData: mockQuiz,
       currentQuestionIndex: 0,
-      players: {},
+      players: {}, // deviceId -> { nickname, employeeId, score, socketId, disconnectTimer }
       questionStartTime: 0,
       answers: new Map(),
       timerInterval: null
@@ -180,34 +196,85 @@ io.on('connection', (socket) => {
     socket.emit('game-created', { pin, quizTitle: mockQuiz.title, joinUrl, qrCodeDataUrl });
   });
 
-  // ---- PLAYER: tham gia phòng ----
-  socket.on('join-game', ({ pin, nickname, employeeId }) => {
+  // ---- PLAYER: tham gia phòng lần đầu ----
+  socket.on('join-game', ({ pin, nickname, employeeId, deviceId }) => {
     const cleanNick = (nickname || '').trim().slice(0, 20);
     const cleanEmpId = (employeeId || '').trim().slice(0, 20);
     const game = games[pin];
 
     if (!game) return socket.emit('join-error', 'Không tìm thấy phòng!');
+    if (!deviceId) return socket.emit('join-error', 'Thiếu định danh thiết bị, vui lòng tải lại trang.');
     if (!cleanNick) return socket.emit('join-error', 'Vui lòng nhập tên!');
     if (!cleanEmpId) return socket.emit('join-error', 'Vui lòng nhập mã số nhân viên (MSNV)!');
-    if (game.currentQuestionIndex > 0 || game.timerInterval) {
-      return socket.emit('join-error', 'Trò chơi đã bắt đầu!');
+
+    // Thiết bị này đã có trong phòng rồi (vd: tải lại trang) -> coi như cập nhật, không chặn trùng tên với chính mình
+    const isExistingDevice = !!game.players[deviceId];
+
+    if (!isExistingDevice) {
+      if (game.currentQuestionIndex > 0 || game.timerInterval) {
+        return socket.emit('join-error', 'Trò chơi đã bắt đầu!');
+      }
+      const nameTaken = Object.values(game.players).some(
+        p => p.nickname.toLowerCase() === cleanNick.toLowerCase()
+      );
+      if (nameTaken) return socket.emit('join-error', 'Tên này đã có người dùng, chọn tên khác!');
+
+      const empIdTaken = Object.values(game.players).some(
+        p => p.employeeId.toLowerCase() === cleanEmpId.toLowerCase()
+      );
+      if (empIdTaken) return socket.emit('join-error', 'MSNV này đã tham gia phòng rồi!');
     }
 
-    const nameTaken = Object.values(game.players).some(
-      p => p.nickname.toLowerCase() === cleanNick.toLowerCase()
-    );
-    if (nameTaken) return socket.emit('join-error', 'Tên này đã có người dùng, chọn tên khác!');
+    const existing = game.players[deviceId];
+    if (existing?.disconnectTimer) clearTimeout(existing.disconnectTimer);
 
-    const empIdTaken = Object.values(game.players).some(
-      p => p.employeeId.toLowerCase() === cleanEmpId.toLowerCase()
-    );
-    if (empIdTaken) return socket.emit('join-error', 'MSNV này đã tham gia phòng rồi!');
-
-    game.players[socket.id] = { nickname: cleanNick, employeeId: cleanEmpId, score: 0, pin };
+    game.players[deviceId] = {
+      nickname: cleanNick,
+      employeeId: cleanEmpId,
+      score: existing?.score || 0,
+      socketId: socket.id,
+      disconnectTimer: null
+    };
     socket.join(pin);
-    socket.emit('joined-successfully', { nickname: cleanNick });
+    socketIndex.set(socket.id, { pin, deviceId });
 
+    socket.emit('joined-successfully', { nickname: cleanNick });
     broadcastPlayerList(pin);
+  });
+
+  // ---- PLAYER: tự động vào lại phòng sau khi mất kết nối tạm thời ----
+  socket.on('rejoin-game', ({ pin, deviceId }) => {
+    const game = games[pin];
+    const player = game?.players?.[deviceId];
+
+    if (!game || !player) {
+      return socket.emit('rejoin-failed');
+    }
+
+    if (player.disconnectTimer) {
+      clearTimeout(player.disconnectTimer);
+      player.disconnectTimer = null;
+    }
+    player.socketId = socket.id;
+    socket.join(pin);
+    socketIndex.set(socket.id, { pin, deviceId });
+
+    socket.emit('rejoined-successfully', { nickname: player.nickname });
+    broadcastPlayerList(pin);
+
+    // Nếu đang giữa một câu hỏi, đưa người chơi trở lại đúng màn hình câu hỏi đó
+    if (game.timerInterval) {
+      const q = game.quizData.questions[game.currentQuestionIndex];
+      socket.emit('show-controller', {
+        questionText: q.questionText,
+        options: q.options.map(o => o.text),
+        questionNumber: game.currentQuestionIndex + 1,
+        totalQuestions: game.quizData.questions.length
+      });
+      if (game.answers.has(deviceId)) {
+        socket.emit('already-answered');
+      }
+    }
   });
 
   // ---- HOST: bắt đầu câu hỏi đầu tiên ----
@@ -230,13 +297,10 @@ io.on('connection', (socket) => {
     if (!game || game.hostId !== socket.id) return;
 
     const isLast = game.currentQuestionIndex + 1 >= game.quizData.questions.length;
-    if (!isLast) return; // chỉ cho leaderboard ở câu cuối
+    if (!isLast) return;
 
-    const leaderboard = getPlayerList(game)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 10);
+    const leaderboard = getPlayerList(game).sort((a, b) => b.score - a.score).slice(0, 10);
 
-    // Gửi cho cả HOST + PLAYER
     io.to(pin).emit('show-leaderboard', {
       leaderboard,
       afterQuestionNumber: game.currentQuestionIndex + 1,
@@ -262,21 +326,25 @@ io.on('connection', (socket) => {
 
   // ---- PLAYER: gửi câu trả lời ----
   socket.on('submit-answer', ({ pin, answerIndex }) => {
+    const info = socketIndex.get(socket.id);
+    if (!info || info.pin !== pin) return;
+
     const game = games[pin];
-    if (!game || !game.players[socket.id]) return;
-    if (game.answers.has(socket.id)) return; // đã trả lời rồi, chặn gửi lại
+    const deviceId = info.deviceId;
+    if (!game || !game.players[deviceId]) return;
+    if (game.answers.has(deviceId)) return; // đã trả lời rồi, chặn gửi lại
 
     const currentQuestion = game.quizData.questions[game.currentQuestionIndex];
     if (!currentQuestion) return;
 
-    game.answers.set(socket.id, answerIndex);
+    game.answers.set(deviceId, answerIndex);
 
     const timeTaken = Date.now() - game.questionStartTime;
     const isCorrect = currentQuestion.options[answerIndex]?.isCorrect;
 
     if (isCorrect) {
       const points = Math.max(1000 - Math.floor(timeTaken / 10), 500);
-      game.players[socket.id].score += points;
+      game.players[deviceId].score += points;
       socket.emit('answer-result', { correct: true, points });
     } else {
       socket.emit('answer-result', { correct: false, points: 0 });
@@ -290,21 +358,31 @@ io.on('connection', (socket) => {
 
   // ---- Xử lý khi có người ngắt kết nối ----
   socket.on('disconnect', () => {
+    // Host ngắt kết nối -> kết thúc phòng ngay (host không có cơ chế ân hạn)
     for (const pin of Object.keys(games)) {
-      const game = games[pin];
-
-      if (game.hostId === socket.id) {
+      if (games[pin].hostId === socket.id) {
         io.to(pin).emit('host-disconnected');
         endGame(pin);
-        continue;
-      }
-
-      if (game.players[socket.id]) {
-        delete game.players[socket.id];
-        game.answers.delete(socket.id);
-        broadcastPlayerList(pin);
       }
     }
+
+    // Người chơi ngắt kết nối -> không xoá ngay, chờ DISCONNECT_GRACE_MS để họ có cơ hội
+    // tự động kết nối lại (vd: điện thoại khoá màn hình rồi mở lại) trước khi coi là đã rời phòng.
+    const info = socketIndex.get(socket.id);
+    if (!info) return;
+    socketIndex.delete(socket.id);
+
+    const { pin, deviceId } = info;
+    const game = games[pin];
+    const player = game?.players?.[deviceId];
+    if (!player) return;
+
+    // Nếu người chơi đã kết nối lại bằng socket khác rồi thì bỏ qua (tránh xoá nhầm)
+    if (player.socketId !== socket.id) return;
+
+    player.disconnectTimer = setTimeout(() => {
+      removePlayer(pin, deviceId);
+    }, DISCONNECT_GRACE_MS);
   });
 });
 
