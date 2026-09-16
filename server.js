@@ -93,13 +93,7 @@ function askQuestion(pin) {
     totalQuestions: game.quizData.questions.length,
     totalPlayers
   });
-  io.to(pin).emit('show-controller', {
-  questionText: currentQuestion.questionText,
-  options: currentQuestion.options.map(o => o.text),
-  questionNumber: game.currentQuestionIndex + 1,
-  totalQuestions: game.quizData.questions.length,
-  optionCount: currentQuestion.options.length
-});
+  io.to(pin).emit('show-controller', { optionCount: currentQuestion.options.length });
 
   let timeLeft = currentQuestion.timeLimit;
   if (game.timerInterval) clearInterval(game.timerInterval);
@@ -133,25 +127,19 @@ function revealAnswer(pin) {
     if (counts[answerIndex] !== undefined) counts[answerIndex]++;
   }
   const correctIndex = q.options.findIndex(o => o.isCorrect);
-io.to(game.hostId).emit('show-reveal', {
-  questionText: q.questionText,
 
-  options: q.options.map((o, i) => ({
-    text: o.text,
-    count: counts[i]
-  })),
-
-  correctIndex,
-
-  questionNumber: game.currentQuestionIndex + 1,
-
-  totalQuestions: game.quizData.questions.length,
-
-  // Quan trọng
-  isLast:
-    game.currentQuestionIndex + 1 >=
-    game.quizData.questions.length
-});
+  io.to(game.hostId).emit('show-reveal', {
+    questionText: q.questionText,
+    options: q.options.map((o, i) => ({
+      text: o.text,
+      count: counts[i]
+    })),
+    correctIndex,
+    questionNumber: game.currentQuestionIndex + 1,
+    totalQuestions: game.quizData.questions.length,
+    // Quan trọng: host.html dùng để quyết định nút "Câu tiếp theo" hay "Xem bảng xếp hạng"
+    isLast: game.currentQuestionIndex + 1 >= game.quizData.questions.length
+  });
 
   io.to(pin).emit('question-ended');
 }
@@ -231,60 +219,41 @@ io.on('connection', (socket) => {
     revealAnswer(pin);
   });
 
-  // ---- HOST: yêu cầu xem bảng xếp hạng (sau màn reveal) ----
- // ---- HOST: yêu cầu bảng xếp hạng ----
-// Chỉ cho phép hiển thị bảng xếp hạng ở câu cuối
-socket.on('request-leaderboard', ({ pin }) => {
+  // ---- HOST: yêu cầu bảng xếp hạng (chỉ dùng ở câu hỏi cuối cùng) ----
+  socket.on('request-leaderboard', ({ pin }) => {
+    const game = games[pin];
+    if (!game || game.hostId !== socket.id) return;
 
-  const game = games[pin];
+    const isLast = game.currentQuestionIndex + 1 >= game.quizData.questions.length;
+    if (!isLast) return; // chỉ cho leaderboard ở câu cuối
 
-  if (!game || game.hostId !== socket.id) return;
+    const leaderboard = getPlayerList(game)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
 
-  const isLast =
-    game.currentQuestionIndex + 1 >=
-    game.quizData.questions.length;
-
-  // Chỉ cho leaderboard ở câu cuối
-  if (!isLast) return;
-
-  const leaderboard = getPlayerList(game)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 10);
-
-  // Gửi cho HOST + PLAYER
-  io.to(pin).emit('show-leaderboard', {
-    leaderboard,
-
-    afterQuestionNumber:
-      game.currentQuestionIndex + 1,
-
-    totalQuestions:
-      game.quizData.questions.length,
-
-    isLast: true
+    // Gửi cho cả HOST + PLAYER
+    io.to(pin).emit('show-leaderboard', {
+      leaderboard,
+      afterQuestionNumber: game.currentQuestionIndex + 1,
+      totalQuestions: game.quizData.questions.length,
+      isLast: true
+    });
   });
-});
-  // ---- HOST: chuyển sang câu hỏi kế tiếp ----
- socket.on('next-question', ({ pin }) => {
 
-  const game = games[pin];
+  // ---- HOST: chuyển sang câu hỏi kế tiếp (hoặc kết thúc nếu đã ở câu cuối) ----
+  socket.on('next-question', ({ pin }) => {
+    const game = games[pin];
+    if (!game || game.hostId !== socket.id) return;
 
-  if (!game || game.hostId !== socket.id) return;
+    if (game.currentQuestionIndex + 1 >= game.quizData.questions.length) {
+      io.to(pin).emit('game-over');
+      endGame(pin);
+      return;
+    }
 
-  // Nếu đang ở câu cuối thì kết thúc game
-  if (
-    game.currentQuestionIndex + 1 >=
-    game.quizData.questions.length
-  ) {
-    io.to(pin).emit('game-over');
-    endGame(pin);
-    return;
-  }
-
-  game.currentQuestionIndex++;
-
-  askQuestion(pin);
-});
+    game.currentQuestionIndex++;
+    askQuestion(pin);
+  });
 
   // ---- PLAYER: gửi câu trả lời ----
   socket.on('submit-answer', ({ pin, answerIndex }) => {
